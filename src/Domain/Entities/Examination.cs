@@ -1,29 +1,34 @@
+using Domain.Enums;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Domain.Enums;
+
 
 namespace Domain.Entities;
 
-/// <summary>
-/// Đợt thi / Kỳ thi trong một học kỳ.
-/// Schema: public.examinations — bảng đã có trên Supabase (đã đối chiếu DB-First).
-/// </summary>
+[Table("examinations")]
 public class Examination
 {
     [Key]
     [Column("examination_id")]
-    public Guid ExaminationId { get; set; }
+    public Guid ExaminationId { get; set; } = Guid.NewGuid();
 
     [Required]
+    [MaxLength(20)]
     [Column("examination_code")]
     public string ExaminationCode { get; set; } = string.Empty;
 
     [Required]
+    [MaxLength(200)]
     [Column("name")]
     public string Name { get; set; } = string.Empty;
 
+
     [Required]
-    [Column("start_date")]
+    [Column("examination_type")]
+    public ExaminationType ExaminationType { get; set; }
+
+    [Required]
+    [Column("start_date", TypeName = "date")]
     public DateOnly StartDate { get; set; }
 
     [Required]
@@ -31,13 +36,15 @@ public class Examination
     public TimeSpan StartTime { get; set; }
 
     [Required]
+    [Range(1, int.MaxValue, ErrorMessage = "Duration must be greater than 0.")]
     [Column("duration_minutes")]
     public int DurationMinutes { get; set; }
 
-    [Required]
+    [Range(0, int.MaxValue, ErrorMessage = "Before-time minutes cannot be negative.")]
     [Column("before_time_minutes")]
-    public int BeforeTimeMinutes { get; set; }
+    public int BeforeTimeMinutes { get; set; } = 0;
 
+    [MaxLength(1000)]
     [Column("note")]
     public string? Note { get; set; }
 
@@ -47,11 +54,10 @@ public class Examination
 
     [Required]
     [Column("semester_id")]
+    [ForeignKey(nameof(Semester))]
     public Guid SemesterId { get; set; }
 
-    // Navigation
-    [ForeignKey("SemesterId")]
-    public Semester? Semester { get; set; }
+    public Semester Semester { get; set; } = null!;
 
     public ICollection<ExamMaterial> ExamMaterials { get; set; } = new List<ExamMaterial>();
 }

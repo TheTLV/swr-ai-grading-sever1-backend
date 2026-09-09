@@ -39,8 +39,8 @@ namespace Infrastructure.Migrations
 
                     b.Property<string>("ExamMaterialCode")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("exam_material_code");
 
                     b.Property<Guid>("ExaminationId")
@@ -60,9 +60,7 @@ namespace Infrastructure.Migrations
                         .HasColumnName("file_question_docs");
 
                     b.Property<bool>("IsDeleted")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
-                        .HasDefaultValue(false)
                         .HasColumnName("is_deleted");
 
                     b.Property<int>("Status")
@@ -77,12 +75,9 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("CreateById");
 
-                    b.HasIndex("ExamMaterialCode")
-                        .IsUnique();
-
                     b.HasIndex("ExaminationId");
 
-                    b.ToTable("exam_materials", (string)null);
+                    b.ToTable("exam_materials");
                 });
 
             modelBuilder.Entity("Domain.Entities.Examination", b =>
@@ -102,14 +97,20 @@ namespace Infrastructure.Migrations
 
                     b.Property<string>("ExaminationCode")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("examination_code");
+
+                    b.Property<string>("ExaminationType")
+                        .IsRequired()
+                        .HasMaxLength(5)
+                        .HasColumnType("character varying(5)")
+                        .HasColumnName("examination_type");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("name");
 
                     b.Property<string>("Note")
@@ -129,8 +130,10 @@ namespace Infrastructure.Migrations
                         .HasColumnType("interval")
                         .HasColumnName("start_time");
 
-                    b.Property<int>("Status")
-                        .HasColumnType("integer")
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("status");
 
                     b.HasKey("ExaminationId");
@@ -140,7 +143,7 @@ namespace Infrastructure.Migrations
 
                     b.HasIndex("SemesterId");
 
-                    b.ToTable("examinations", (string)null);
+                    b.ToTable("examinations");
                 });
 
             modelBuilder.Entity("Domain.Entities.Grading", b =>
@@ -155,7 +158,7 @@ namespace Infrastructure.Migrations
                         .HasColumnName("ai_logs");
 
                     b.Property<decimal?>("AiScore")
-                        .HasColumnType("numeric(5,2)")
+                        .HasColumnType("decimal(5,2)")
                         .HasColumnName("ai_score");
 
                     b.Property<string>("Comment")
@@ -168,17 +171,17 @@ namespace Infrastructure.Migrations
                         .HasColumnName("create_date");
 
                     b.Property<decimal?>("FinalScore")
-                        .HasColumnType("numeric(5,2)")
+                        .HasColumnType("decimal(5,2)")
                         .HasColumnName("final_score");
 
                     b.Property<string>("GradingCode")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("grading_code");
 
                     b.Property<decimal?>("LecturerScore")
-                        .HasColumnType("numeric(5,2)")
+                        .HasColumnType("decimal(5,2)")
                         .HasColumnName("lecturer_score");
 
                     b.Property<int>("Status")
@@ -193,19 +196,11 @@ namespace Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("update_date");
 
-                    b.Property<Guid?>("UserId")
-                        .HasColumnType("uuid");
-
                     b.HasKey("GradingId");
-
-                    b.HasIndex("GradingCode")
-                        .IsUnique();
 
                     b.HasIndex("SubmissionId");
 
-                    b.HasIndex("UserId");
-
-                    b.ToTable("gradings", (string)null);
+                    b.ToTable("gradings");
                 });
 
             modelBuilder.Entity("Domain.Entities.Semester", b =>
@@ -227,8 +222,8 @@ namespace Infrastructure.Migrations
 
                     b.Property<string>("SemesterCode")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("semester_code");
 
                     b.Property<DateOnly>("StartDate")
@@ -237,8 +232,8 @@ namespace Infrastructure.Migrations
 
                     b.Property<string>("Status")
                         .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
                         .HasColumnName("status");
 
                     b.HasKey("SemesterId");
@@ -246,7 +241,7 @@ namespace Infrastructure.Migrations
                     b.HasIndex("SemesterCode")
                         .IsUnique();
 
-                    b.ToTable("semesters", (string)null);
+                    b.ToTable("semesters");
                 });
 
             modelBuilder.Entity("Domain.Entities.Submission", b =>
@@ -262,8 +257,8 @@ namespace Infrastructure.Migrations
 
                     b.Property<string>("Folder")
                         .IsRequired()
-                        .HasMaxLength(1024)
-                        .HasColumnType("character varying(1024)")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
                         .HasColumnName("folder");
 
                     b.Property<Guid>("LecturerId")
@@ -276,24 +271,19 @@ namespace Infrastructure.Migrations
 
                     b.Property<string>("SubmissionName")
                         .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("submission_name");
 
                     b.Property<DateTime>("UpdatedDate")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_date");
 
-                    b.Property<Guid?>("UserId")
-                        .HasColumnType("uuid");
-
                     b.HasKey("SubmissionId");
 
                     b.HasIndex("LecturerId");
 
-                    b.HasIndex("UserId");
-
-                    b.ToTable("submissions", (string)null);
+                    b.ToTable("submissions");
                 });
 
             modelBuilder.Entity("Domain.Entities.User", b =>
@@ -307,45 +297,25 @@ namespace Infrastructure.Migrations
                         .HasColumnType("date")
                         .HasColumnName("birthday");
 
-                    b.Property<string>("CCCD")
+                    b.Property<string>("Cccd")
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("cccd");
 
-                    b.Property<string>("Discriminator")
-                        .IsRequired()
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("Discriminator");
-
                     b.Property<string>("FullName")
                         .IsRequired()
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
                         .HasColumnName("full_name");
 
                     b.Property<bool>("IsActive")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
-                        .HasDefaultValue(true)
                         .HasColumnName("is_active");
 
                     b.Property<bool>("IsDeleted")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("boolean")
-                        .HasDefaultValue(false)
                         .HasColumnName("is_deleted");
-
-                    b.Property<string>("LecturerCode")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("lecturer_code");
-
-                    b.Property<string>("Major")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("major");
 
                     b.Property<string>("PasswordHash")
                         .IsRequired()
@@ -356,39 +326,63 @@ namespace Infrastructure.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("role");
 
-                    b.Property<string>("StudentCode")
-                        .HasMaxLength(50)
-                        .HasColumnType("character varying(50)")
-                        .HasColumnName("student_code");
-
-                    b.Property<string>("Subject")
-                        .HasMaxLength(255)
-                        .HasColumnType("character varying(255)")
-                        .HasColumnName("subject");
-
                     b.HasKey("Id");
 
-                    b.HasIndex("CCCD");
+                    b.ToTable("users");
 
-                    b.HasIndex("LecturerCode");
+                    b.UseTptMappingStrategy();
+                });
 
-                    b.HasIndex("StudentCode");
+            modelBuilder.Entity("Domain.Entities.Lecturer", b =>
+                {
+                    b.HasBaseType("Domain.Entities.User");
 
-                    b.ToTable("users", (string)null);
+                    b.Property<string>("LecturerCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("lecturer_code");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("subject");
+
+                    b.ToTable("lecturers");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Student", b =>
+                {
+                    b.HasBaseType("Domain.Entities.User");
+
+                    b.Property<string>("Major")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("major");
+
+                    b.Property<string>("StundentCode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("student_code");
+
+                    b.ToTable("students");
                 });
 
             modelBuilder.Entity("Domain.Entities.ExamMaterial", b =>
                 {
-                    b.HasOne("Domain.Entities.User", "CreateBy")
-                        .WithMany("CreatedExamMaterials")
+                    b.HasOne("Domain.Entities.Lecturer", "CreateBy")
+                        .WithMany("ExamMaterialsCreated")
                         .HasForeignKey("CreateById")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("Domain.Entities.Examination", "Examination")
                         .WithMany("ExamMaterials")
                         .HasForeignKey("ExaminationId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("CreateBy");
@@ -401,7 +395,7 @@ namespace Infrastructure.Migrations
                     b.HasOne("Domain.Entities.Semester", "Semester")
                         .WithMany("Examinations")
                         .HasForeignKey("SemesterId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Semester");
@@ -415,26 +409,36 @@ namespace Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Domain.Entities.User", null)
-                        .WithMany("Gradings")
-                        .HasForeignKey("UserId");
-
                     b.Navigation("Submission");
                 });
 
             modelBuilder.Entity("Domain.Entities.Submission", b =>
                 {
-                    b.HasOne("Domain.Entities.User", "Lecturer")
-                        .WithMany("CreatedSubmissions")
+                    b.HasOne("Domain.Entities.Lecturer", "Lecturer")
+                        .WithMany("Submissions")
                         .HasForeignKey("LecturerId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Domain.Entities.User", null)
-                        .WithMany("Submissions")
-                        .HasForeignKey("UserId");
-
                     b.Navigation("Lecturer");
+                });
+
+            modelBuilder.Entity("Domain.Entities.Lecturer", b =>
+                {
+                    b.HasOne("Domain.Entities.User", null)
+                        .WithOne()
+                        .HasForeignKey("Domain.Entities.Lecturer", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Domain.Entities.Student", b =>
+                {
+                    b.HasOne("Domain.Entities.User", null)
+                        .WithOne()
+                        .HasForeignKey("Domain.Entities.Student", "Id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Domain.Entities.Examination", b =>
@@ -452,13 +456,9 @@ namespace Infrastructure.Migrations
                     b.Navigation("Gradings");
                 });
 
-            modelBuilder.Entity("Domain.Entities.User", b =>
+            modelBuilder.Entity("Domain.Entities.Lecturer", b =>
                 {
-                    b.Navigation("CreatedExamMaterials");
-
-                    b.Navigation("CreatedSubmissions");
-
-                    b.Navigation("Gradings");
+                    b.Navigation("ExamMaterialsCreated");
 
                     b.Navigation("Submissions");
                 });
