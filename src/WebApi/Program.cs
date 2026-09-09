@@ -23,12 +23,12 @@ builder.Services.AddDatabase(builder.Configuration);
 
 // 4. Unit of Work + Repositories (DIP)
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-builder.Services.AddScoped<IUserRepository, UserRepository>();
-builder.Services.AddScoped<ISemesterRepository, SemesterRepository>();
-//builder.Services.AddScoped<IExaminationRepository, ExaminationRepository>();
-builder.Services.AddScoped<ISubmissionRepository, SubmissionRepository>();
-builder.Services.AddScoped<IExamMaterialRepository, ExamMaterialRepository>();
-builder.Services.AddScoped<IGradingRepository, GradingRepository>();
+//builder.Services.AddScoped<IUserRepository, UserRepository>();
+//builder.Services.AddScoped<ISemesterRepository, SemesterRepository>();
+////builder.Services.AddScoped<IExaminationRepository, ExaminationRepository>();
+//builder.Services.AddScoped<ISubmissionRepository, SubmissionRepository>();
+//builder.Services.AddScoped<IExamMaterialRepository, ExamMaterialRepository>();
+//builder.Services.AddScoped<IGradingRepository, GradingRepository>();
 
 // 4. JWT Authentication + Settings
 var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET")
