@@ -9,22 +9,22 @@ public class UserRepository : Repository<User>, IUserRepository
     public UserRepository(AppDbContext db) : base(db) { }
 
     public Task<User?> GetByCCCDAsync(string cccd, CancellationToken ct = default)
-        => FirstOrDefaultAsync(u => u.CCCD == cccd && !u.IsDeleted, ct);
+        => FirstOrDefaultAsync(u => u.Cccd == cccd && !u.IsDeleted, ct);
 
     public Task<User?> GetByStudentCodeAsync(string studentCode, CancellationToken ct = default)
-        => FirstOrDefaultAsync(u => u.StudentCode == studentCode && !u.IsDeleted, ct);
+        => _db.Set<Student>().AsNoTracking().FirstOrDefaultAsync(u => u.StundentCode == studentCode && !u.IsDeleted, ct);
 
     public Task<User?> GetByLecturerCodeAsync(string lecturerCode, CancellationToken ct = default)
-        => FirstOrDefaultAsync(u => u.LecturerCode == lecturerCode && !u.IsDeleted, ct);
+        => _db.Set<Lecturer>().AsNoTracking().FirstOrDefaultAsync(u => u.LecturerCode == lecturerCode && !u.IsDeleted, ct);
 
     public Task<bool> IsCCCDExistsAsync(string cccd, CancellationToken ct = default)
-        => AnyAsync(u => u.CCCD == cccd && !u.IsDeleted, ct);
+        => AnyAsync(u => u.Cccd == cccd && !u.IsDeleted, ct);
 
     public Task<bool> IsStudentCodeExistsAsync(string studentCode, CancellationToken ct = default)
-        => AnyAsync(u => u.StudentCode == studentCode && !u.IsDeleted, ct);
+        => _db.Set<Student>().AnyAsync(u => u.StundentCode == studentCode && !u.IsDeleted, ct);
 
     public Task<bool> IsLecturerCodeExistsAsync(string lecturerCode, CancellationToken ct = default)
-        => AnyAsync(u => u.LecturerCode == lecturerCode && !u.IsDeleted, ct);
+        => _db.Set<Lecturer>().AnyAsync(u => u.LecturerCode == lecturerCode && !u.IsDeleted, ct);
 }
 
 public class SemesterRepository : Repository<Semester>, ISemesterRepository

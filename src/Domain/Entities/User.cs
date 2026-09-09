@@ -1,25 +1,23 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Domain.Enums;
+using AI_Assisted_SWR_Grading_System.Domain.Enums;
 
 namespace Domain.Entities;
 
-/// <summary>
-/// Người dùng trong hệ thống (Student / Lecturer).
-/// Schema: public.users — bảng đã có trên Supabase (đã đối chiếu DB-First).
-/// </summary>
+[Table("users")]
 public class User
 {
     [Key]
     [Column("id")]
-    public Guid Id { get; set; }
+    public Guid Id { get; set; } = Guid.NewGuid();
 
     [Required]
+    [MaxLength(200)]
     [Column("full_name")]
     public string FullName { get; set; } = string.Empty;
 
     [Required]
-    [Column("birthday")]
+    [Column("birthday", TypeName = "date")]
     public DateOnly Birthday { get; set; }
 
     [Required]
@@ -28,60 +26,16 @@ public class User
 
     [Required]
     [Column("role")]
-    public UserRoleEnum Role { get; set; }
+    public UserRole Role { get; set; }
 
     [Required]
+    [MaxLength(20)]
     [Column("cccd")]
-    public string CCCD { get; set; } = string.Empty;
+    public string Cccd { get; set; } = string.Empty;
 
-    [Required]
     [Column("is_deleted")]
     public bool IsDeleted { get; set; }
 
-    [Required]
     [Column("is_active")]
-    public bool IsActive { get; set; }
-
-    /// <summary>
-    /// Phân biệt loại user: "Student" hoặc "Lecturer".
-    /// </summary>
-    [Required]
-    [Column("Discriminator")]
-    public string Discriminator { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Mã giảng viên (chỉ khi Discriminator = "Lecturer").
-    /// </summary>
-    [Column("lecturer_code")]
-    public string? LecturerCode { get; set; }
-
-    /// <summary>
-    /// Môn giảng dạy (chỉ khi Discriminator = "Lecturer").
-    /// </summary>
-    [Column("subject")]
-    public string? Subject { get; set; }
-
-    /// <summary>
-    /// Mã sinh viên (chỉ khi Discriminator = "Student").
-    /// </summary>
-    [Column("student_code")]
-    public string? StudentCode { get; set; }
-
-    /// <summary>
-    /// Ngành học (chỉ khi Discriminator = "Student").
-    /// </summary>
-    [Column("major")]
-    public string? Major { get; set; }
-
-    // Navigation: submissions (bài nộp của sinh viên)
-    public ICollection<Submission> Submissions { get; set; } = new List<Submission>();
-
-    // Navigation: submissions (bài nộp được tạo bởi giảng viên)
-    public ICollection<Submission> CreatedSubmissions { get; set; } = new List<Submission>();
-
-    // Navigation: exam_materials (đề thi được tạo bởi giảng viên)
-    public ICollection<ExamMaterial> CreatedExamMaterials { get; set; } = new List<ExamMaterial>();
-
-    // Navigation: gradings (điểm được chấm bởi giảng viên)
-    public ICollection<Grading> Gradings { get; set; } = new List<Grading>();
+    public bool IsActive { get; set; } = true;
 }

@@ -8,39 +8,24 @@ using FluentValidation.AspNetCore;
 using Infrastructure.Persistence;
 using Infrastructure.Persistence.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Infrastructure.Configurations;
 
-// ============================================================
-//  Program.cs — Điểm vào của Backend.Server1
-//  Cấu trúc: Clean Architecture 4-layer
-//     Domain ← Application ← Infrastructure ← WebApi
-//  Schema Supabase là chuẩn — không tự ý sửa database.
-// ============================================================
 
-// 1. Load .env TRƯỚC khi đọc bất kỳ config nào
 Env.Load();
 
 var builder = WebApplication.CreateBuilder(args);
 
 // 2. Đọc connection string từ env
-var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection")
-    ?? throw new InvalidOperationException(
-        "ConnectionStrings__DefaultConnection is not set. Check your .env file.");
 
-// 3. Đăng ký DbContext (chỉ Infrastructure mới reference nó)
-builder.Services.AddDbContext<AppDbContext>(options =>
-{
-    options.UseNpgsql(connectionString, npgsql =>
-        npgsql.MigrationsAssembly("Infrastructure"));
-});
+builder.Services.AddDatabase(builder.Configuration);
 
 // 4. Unit of Work + Repositories (DIP)
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<ISemesterRepository, SemesterRepository>();
-builder.Services.AddScoped<IExaminationRepository, ExaminationRepository>();
+//builder.Services.AddScoped<IExaminationRepository, ExaminationRepository>();
 builder.Services.AddScoped<ISubmissionRepository, SubmissionRepository>();
 builder.Services.AddScoped<IExamMaterialRepository, ExamMaterialRepository>();
 builder.Services.AddScoped<IGradingRepository, GradingRepository>();
@@ -79,12 +64,12 @@ builder.Services.AddAuthorization();
 // 5. Đăng ký Application Services
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
-builder.Services.AddScoped<IUserService, UserService>();
-builder.Services.AddScoped<ISemesterService, SemesterService>();
-builder.Services.AddScoped<IExaminationService, ExaminationService>();
-builder.Services.AddScoped<ISubmissionService, SubmissionService>();
-builder.Services.AddScoped<IExamMaterialService, ExamMaterialService>();
-builder.Services.AddScoped<IGradingService, GradingService>();
+//builder.Services.AddScoped<IUserService, UserService>();
+//builder.Services.AddScoped<ISemesterService, SemesterService>();
+//builder.Services.AddScoped<IExaminationService, ExaminationService>();
+//builder.Services.AddScoped<ISubmissionService, SubmissionService>();
+//builder.Services.AddScoped<IExamMaterialService, ExamMaterialService>();
+//builder.Services.AddScoped<IGradingService, GradingService>();
 
 // 5.1 Bind AuthOptions từ appsettings (SeedAccounts) + register Seeder
 builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection(AuthOptions.SectionName));
