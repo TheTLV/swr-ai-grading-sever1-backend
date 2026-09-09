@@ -1,0 +1,283 @@
+﻿ 
+ 
+CAPSTONE PROJECT REGISTER 
+ 
+Class:            Duration time:  from 09/2026 To 03/2027
+(*) Profession: Software Engineer                   Specialty: SE                           
+(*) Kinds of person make registers:               Lecturer                Students  
+ 
+1. Register information for supervisor (if have) 
+No.
+Full name
+Phone
+E-Mail 
+Title 
+  Supervisor 
+Thân Thị Ngọc Vân
+
+vanttn@fpt.edu.vn
+
+2. Register information for students (if have) 
+ 
+Full name 
+Student code 
+Phone 
+E-mail 
+Role in Group 
+1
+
+
+
+
+ 
+2
+
+
+
+
+ 
+3
+
+
+
+
+ 
+4
+
+
+
+
+ 
+5
+
+
+
+
+
+ 
+3. Register content of Capstone Project 
+(*) 3.1. Capstone Project name: 
+English: Develop an AI-assisted system to support the grading of the Software Requirements (SWR30x) practical exam.
+Vietnamese: Xây dựng hệ thống hỗ trợ chấm thi thực hành môn Software Requirements(SWR30x) có hỗ trợ từ AI.
+a. Context:
+Software Requirements (SWR30X) in FPTU  is one of the most important subjects in Software Engineering education because it establishes the foundation for the entire software development lifecycle. Students are expected to transform customer requirements into software artifacts such as stakeholder analysis, user stories, use cases, use case specifications, business rules, acceptance criteria, product backlogs, sprint plans, UML diagrams, and other project documents. However, evaluating these artifacts is highly time-consuming since each submission requires manual inspection of both textual content and diagrams.
+Moreover, practical examinations (PEs) in Software Requirements typically require students to submit Microsoft Word documents containing textual descriptions, tables, diagrams, and embedded images. Instructors often spend significant effort opening hundreds of documents, locating required sections, interpreting embedded screenshots or diagrams, comparing student work with grading rubrics, and assigning scores consistently. Existing Learning Management Systems provide only basic assignment submission and file management features but lack intelligent assessment capabilities for software engineering artifacts.
+Recent advances in Artificial Intelligence, Large Language Models (LLMs), Optical Character Recognition (OCR), and document understanding technologies provide new opportunities to automate both software engineering activities and educational assessment. AI can generate software engineering artifacts from customer requirements, detect inconsistencies among project documents. Additionally, AI can evaluate student submissions against predefined rubrics, extract textual content from images, separate images for rapid manual inspection, recommend scores, highlight missing sections, and provide learning analytics.
+This project assists lecturers in preparing practical examinations, automatically grading student submissions, performing AI-assisted rubric evaluation, visualizing assessment results, and identifying students requiring further academic support.
+Functional requirement :
+Develop a web application system to assist teachers and students in grading exams for the Software Requirements (SWR30x) course.
+Administrator
+The Administrator shall be able to:
+● Manage user accounts and system roles.
+● Configure examination settings,duration.
+● Configure examination schedules.
+● Configure examination rooms.
+● Configure grading policies.
+● Configure plagiarism detection policies.
+● Configure system security policies.
+● Monitor overall system
+● View audit logs.
+● Generate system reports.
+● Export examination statistics.
+● Statistics on the number of submission reviewed for re-evaluation.
+Lecturer
+The Lecturer shall be able to:
+● Create practical examinations.
+● Upload examination specifications (.docx).
+● Upload student answer templates (.docx).
+● Upload grading rubrics (.docx or .xlsx).
+● Publish examinations.
+● Configure AI grading models.
+● Grade, ReGrade when students appeal their exam results.
+● Approve final grades.
+● Start AI grading.
+● Review AI-generated scores.
+● Review AI explanations.
+● Override AI scores.
+● Add manual comments.
+● Compare AI scores with manual scores.
+Student Submission
+● Log in securely.
+● View examination information.
+● Download examination files.
+● Download answer templates.
+● Upload submissions.
+● Track submission status.
+● Receive submission confirmation.
+● View examination results.
+● View lecturer feedback.
+● View AI feedback (if permitted).
+Examination Monitoring
+● Monitor students during examinations.
+● Review suspicious activities.
+● View cheating alerts.
+● Review examination logs.
+● Replay examination timelines.
+Analytics
+● Generate grading statistics.
+● Analyze score distributions.
+● View AI grading accuracy.
+● Export reports.
+● Highlight failed students.
+● Highlight students receiving zero scores.
+Examination Environment Configuration
+The system shall allow lecturers or administrators to configure the examination environment.
+The configuration shall include:
+● Approved software applications.
+● Blocked software applications.
+● Approved programming IDEs.
+● Approved web browsers.
+● Approved AI tools.
+● Internet access policies.
+● Clipboard permissions.
+● File access permissions.
+● External device permissions.
+● Screen recording policies.
+Example:
+● Microsoft Word ✓
+● Visual Studio Code ✓
+● IntelliJ IDEA ✓
+● Google Chrome ✓
+● ChatGPT ✗
+● GitHub Copilot ✗
+● Discord ✗
+Student Activity Monitoring: The system shall collect examination activity logs.
+The logs shall include:
+● Application launch history.
+● Application switching history.
+● Browser history during the examination.
+● Active window changes.
+● File opening history.
+● File modification history.
+● Clipboard usage.
+● Copy/Paste activities.
+● Screenshot events.
+● Multiple monitor detection.
+● USB device insertion/removal.
+● Network connection changes.
+● Examination login/logout history.
+● Submission timestamps.
+Cheating Detection:The system shall automatically detect suspicious examination behaviors.
+Examples include:
+● Switching to unauthorized applications.
+● Excessive application switching.
+● Opening prohibited websites.
+● Copy-and-paste from external sources.
+● Frequent clipboard activities.
+● Simultaneous logins.
+● Abnormal idle periods.
+● Suspicious file access.
+● Multiple submission attempts.
+● Unusual editing patterns.
+The system shall assign a Suspicion Score for each student.
+OCR Processing
+If student submissions contain images, the system shall:
+● Extract text from images using OCR.
+● Separate images into an independent preview panel.
+● Highlight extracted text.
+● Allow lecturers to compare extracted text with the original images.
+AI Explainability
+The AI grading engine shall provide:
+● Score justification.
+● Rubric mapping.
+● Missing requirements.
+● Suggested improvements.
+● Confidence score.
+● Supporting evidence.
+Examination Analytics
+The system shall generate:
+● Score distribution charts.
+● AI versus lecturer score comparisons.
+● Rubric achievement analysis.
+● Submission time analysis.
+● Student performance analysis.
+● Suspicious behavior statistics.
+● AI grading accuracy reports.
+● Examination quality reports.
+Export Functions
+The system shall export:
+● Grade reports.
+● AI grading reports.
+● Examination logs.
+● Cheating reports.
+● Audit reports.
+● Statistical reports.
+Supported formats:
+● Excel
+● PDF
+● Docx
+Non-functional requirement:
+Performance
+The platform shall support grading hundreds of student submissions with AI-assisted analysis while maintaining acceptable response time.
+Scalability
+The system shall support multiple concurrent courses, examinations, and users, with modular AI services that can be extended in the future.
+Security
+The system shall implement authentication, role-based authorization, secure document storage, audit logging, and data privacy for examination materials and student submissions
+ (*) 3.2. Main proposal content (including result and product)   
+Proposed Solutions:
+Develop a web application system to assist teachers and students in grading exams for the Software Requirements (SWR30x) course.
+System Actors
+1. Lecturer
+● Create Practical Examination (PE)
+● Upload examination documents
+● Upload grading rubric
+● Upload answer template
+● Upload student submissions
+● Review AI-generated scores
+● Manually adjust grades
+● Approve final scores
+● Analyze examination statistics
+● Export reports
+2. Student
+● View project requirements
+● Submit practical examination
+● View feedback
+● View grading report
+3. Administrator
+● Manage users
+● Manage AI models
+● Manage permissions
+● Export data
+● Import student information.
+Applied Theory:
+Document: Full 7 reports
+Technologies: Suggested technologies include:
+● Spring Boot
+● ReactJS
+● PostgreSQL
+● OpenAI API or equivalent LLM API
+● OCR Engine (Tesseract or Cloud OCR)
+● Apache POI
+● Mermaid / PlantUML
+● Docker
+● Redis
+● Elasticsearch (optional)
+Products (Expected Deliverables):
+Web application for all roles
+Proposed Tasks:
+WP1 Literature Review
+AI-assisted Software Engineering, AI Assessment, OCR, and Learning Analytics.
+WP2 Requirement Analysis
+Analyze examination workflows, and grading processes.
+WP3 System Design
+Design software architecture, database, REST APIs, AI workflows, document processing pipeline, OCR module, and dashboard interfaces.
+WP4 AI Development
+Develop OCR, AI grading, feedback generation, and risk evaluation.
+WP5 Examination Module
+Implement examination management, document upload, rubric management, automatic grading, manual grading, and score exporting.
+WP6 Analytics Module
+Develop learning analytics, examination statistics, dashboards, chart visualization, and student performance analysis.
+WP7 Testing and Documentation
+Conduct system testing, user acceptance testing, prepare the thesis report, technical documentation, installation guide, and demonstration
+4. Other comments (propose all relative things if have). 
+ 
+            
+Supervisor (If have) 
+ (Sign and full name)
+ 
+HCM, date 28/06/2026 
+On behalf of Registers  
+(Sign and full name) 
+
+
+ 
