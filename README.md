@@ -1,52 +1,46 @@
-# Backend_Server1 — SWR30x AI-Assisted Grading System
+# Backend.Server1 — SWR30x AI-Assisted Grading System
 
-> **⚠️ NOTE:** Tên project chính thức chưa được xác định. Đang dùng tên tạm `Backend_Server1`. Cần cập nhật sau khi user xác nhận.
-
-**Server 1** — Giảng viên / Khảo thí — Server cho giảng viên tạo đề, khảo thí kiểm tra, và nhận bài chấm bằng AI.
+> **Server 1** (repo này): Giảng viên + Khảo thí + AI grading.
+> Server 2 (do thành viên khác phụ trách): Sinh viên thi offline.
 
 ---
 
 ## Mục lục
 
 1. [Bối cảnh](#bối-cảnh)
-2. [Công nghệ sử dụng](#công-nghệ-sử-dụng)
+2. [Công nghệ](#công-nghệ)
 3. [Cấu trúc thư mục](#cấu-trúc-thư-mục)
 4. [Cài đặt & Chạy](#cài-đặt--chạy)
 5. [Cấu hình](#cấu-hình)
-6. [API Documentation](#api-documentation)
-7. [Database](#database)
-8. [Các module](#các-module)
-9. [Flow 1 — Phạm vi hiện tại](#flow-1--phạm-vi-hiện-tại)
-10. [Tài liệu liên quan](#tài-liệu-liên-quan)
+6. [Database & Migrations](#database--migrations)
+7. [API Endpoints](#api-endpoints)
+8. [Rule quan trọng cho AI Agent](#rule-quan-trọng-cho-ai-agent)
 
 ---
 
 ## Bối cảnh
 
-Xem: [`../doc/context.md`](../doc/context.md)
+Hệ thống chấm bài thực hành SWR30x có hỗ trợ AI, gồm **2 server**:
 
-**Tóm tắt:** Hệ thống chấm bài thực hành SWR30x có hỗ trợ AI, gồm 2 server:
-- **Server 1** (repo này): Giảng viên + Khảo thí + AI grading
-- **Server 2**: Sinh viên thi (offline, do thành viên khác phụ trách)
+- **Server 1** (repo này): Giảng viên tạo đề, khảo thí kiểm tra, nhận bài chấm AI
+- **Server 2**: Sinh viên thi (offline)
 
 **Flow 1 hiện tại:** Register → Login → Semester → Subject → SubjectOffering → Exam → Assign Lecturer → Upload Files → Validate → Submit → Review → Lock → Package → Transfer
 
 ---
 
-## Công nghệ sử dụng
+## Công nghệ
 
 | Thành phần | Công nghệ |
 |---|---|
 | Framework | ASP.NET Core 8.0 (C#) |
 | ORM | Entity Framework Core 8 |
-| Database | PostgreSQL |
-| Authentication | JWT (Bearer Token) |
+| Database | PostgreSQL (Supabase) |
+| Auth | JWT Bearer |
 | API Docs | Swagger / OpenAPI 3.0 |
 | Validation | FluentValidation |
 | Mapping | AutoMapper |
-| File Storage | Local filesystem / Supabase Storage |
-| AI Service | Python (gọi qua HTTP) |
-| Architecture | Clean Architecture |
+| Architecture | Clean Architecture (4-layer) |
 | Testing | xUnit + Moq |
 
 ---
@@ -54,20 +48,70 @@ Xem: [`../doc/context.md`](../doc/context.md)
 ## Cấu trúc thư mục
 
 ```
-Backend_Server1/
-├── src/
-│   ├── 1.Domain/          # Entities, Enums, ValueObjects, Interfaces
-│   ├── 2.Application/     # DTOs, Services, UseCases, Validators, Mappings
-│   ├── 3.Infrastructure/  # EF Core, Repositories, Storage, External Services
-│   └── 4.WebAPI/          # Controllers, Middleware, Extensions, Program.cs
-├── tests/                  # Unit tests, Integration tests
-├── doc/                    # (symlink hoặc reference sang ../doc/)
-├── Backend_Server1.sln
+Backend.Server1/
+├── Backend.Server1.sln
 ├── README.md
-└── .env.example
+├── RULE.md                              ← LUẬT BẮT BUỘC cho AI agent
+├── CONTRIBUTING.md
+├── SECRET_MANAGEMENT.md
+├── .env.example                         ← Template (KHÔNG có secret)
+├── .env                                  ← Local (đã .gitignore, KHÔNG push)
+├── .gitignore
+│
+├── src/
+│   ├── Domain/                          ← Entities, Enums, Interfaces — KHÔNG phụ thuộc gì
+│   │   ├── Domain.csproj
+│   │   ├── Entities/
+│   │   │   ├── User.cs
+│   │   │   ├── Semester.cs
+│   │   │   ├── Examination.cs
+│   │   │   ├── ExamMaterial.cs
+│   │   │   ├── Submission.cs
+│   │   │   └── Grading.cs
+│   │   └── Enums/
+│   │       ├── SemesterStatus.cs
+│   │       ├── Statuses.cs
+│   │       └── UserRoleEnum.cs
+│   │
+│   ├── Application/                     ← DTOs, Services, Validators, Interfaces → Domain
+│   │   └── Application.csproj
+│   │
+│   ├── Infrastructure/                  ← EF Core, Repositories, Storage, External → Application
+│   │   ├── Infrastructure.csproj
+│   │   ├── Persistence/
+│   │   │   ├── AppDbContext.cs
+│   │   │   ├── AppDbContextDesignFactory.cs
+│   │   │   └── Configurations/
+│   │   │       ├── UserConfiguration.cs
+│   │   │       ├── SemesterConfiguration.cs
+│   │   │       ├── ExaminationConfiguration.cs
+│   │   │       ├── ExamMaterialConfiguration.cs
+│   │   │       ├── SubmissionConfiguration.cs
+│   │   │       └── GradingConfiguration.cs
+│   │   └── Migrations/
+│   │
+│   └── WebApi/                          ← Controllers, Middleware, Program.cs → Infrastructure
+│       ├── WebApi.csproj
+│       ├── Program.cs
+│       ├── appsettings.json
+│       ├── Controllers/
+│       │   └── HealthController.cs
+│       └── Middleware/
+│
+└── tests/
+    ├── Domain.UnitTests/                ← Unit test cho Domain
+    │   └── Domain.UnitTests.csproj
+    └── Application.UnitTests/           ← Unit test cho Application
+        └── Application.UnitTests.csproj
 ```
 
-Xem chi tiết: [`../doc/architecture.md`](../doc/architecture.md#2-clean-architecture-chi-tiết)
+**Quy tắc phụ thuộc (Dependency Rule):**
+```
+WebApi  →  Infrastructure  →  Application  →  Domain
+   ↑                              ↑              ↑
+   (điểm vào)               (use cases)    (entities, enums)
+```
+**Domain KHÔNG được phụ thuộc bất kỳ project nào khác.**
 
 ---
 
@@ -75,29 +119,28 @@ Xem chi tiết: [`../doc/architecture.md`](../doc/architecture.md#2-clean-archit
 
 ### Yêu cầu
 
-- .NET 8.0 SDK trở lên
-- PostgreSQL 14+ (hoặc Docker)
-- (Tùy chọn) Supabase project cho storage
+- .NET 8.0 SDK
+- Supabase project (Postgres + connection string)
 
 ### Các bước
 
-```bash
-# 1. Clone / mở repo
+```powershell
+# 1. Mở thư mục
 cd D:\FPT\2025_k9\DoAn\Backend_Server1
 
-# 2. Restore dependencies
+# 2. Cấu hình .env
+copy .env.example .env
+# Sửa .env: điền ConnectionStrings__DefaultConnection (Supabase), JWT_SECRET, ...
+
+# 3. Restore + Build
 dotnet restore
+dotnet build
 
-# 3. Cấu hình environment
-cp .env.example .env
-# Chỉnh sửa .env với database URL, JWT secret, ...
+# 4. Apply migrations lên Supabase
+dotnet ef database update --project src/Infrastructure --startup-project src/WebApi
 
-# 4. Tạo database (chạy migration)
-dotnet ef database update --project src/3.Infrastructure
-# Hoặc nếu dùng script SQL: chạy file SQL trong doc/migrations/
-
-# 5. Chạy WebAPI
-dotnet run --project src/4.WebAPI
+# 5. Chạy WebApi
+dotnet run --project src/WebApi
 
 # 6. Mở Swagger
 # http://localhost:5000/swagger
@@ -105,7 +148,7 @@ dotnet run --project src/4.WebAPI
 
 ### Chạy tests
 
-```bash
+```powershell
 dotnet test
 ```
 
@@ -113,112 +156,102 @@ dotnet test
 
 ## Cấu hình
 
-Tất cả cấu hình qua biến môi trường hoặc `appsettings.json`. Xem `.env.example` và `appsettings.json` trong `src/4.WebAPI/`.
+Tất cả cấu hình qua **biến môi trường** (load từ `.env` bằng DotNetEnv).
 
-```bash
-# Database
-DATABASE_URL=postgresql://user:pass@host:5432/swrexam
-DB_PROVIDER=postgresql
+**QUAN TRỌNG — KHÔNG BAO GIỜ hardcode secret trong code hay appsettings.json.**
 
-# JWT
-JWT_SECRET=<your-secret-at-least-32-chars>
-JWT_ISSUER=SwrGradingAPI
-JWT_AUDIENCE=SwrGradingClient
-JWT_EXPIRY_MINUTES=60
+Xem chi tiết từng biến trong `.env.example`. Các biến chính:
 
-# Storage
-STORAGE_TYPE=local  # hoặc supabase
-STORAGE_LOCAL_PATH=./storage
-
-# AI Service (Python)
-AI_SERVICE_BASE_URL=http://localhost:8000
-
-# Server 2 (offline exam)
-SERVER2_BASE_URL=http://192.168.1.100:5000
-```
-
----
-
-## API Documentation
-
-Sau khi chạy app, Swagger UI tại:
-```
-http://localhost:5000/swagger
-```
-
-Danh sách endpoint chính: Xem [`../doc/architecture.md#4-api-endpoints-openapi--flow-1`](../doc/architecture.md#4-api-endpoints-openapi--flow-1)
-
----
-
-## Database
-
-### ERD
-Xem [`../doc/architecture.md#3-database-schema-postgresql`](../doc/architecture.md#3-database-schema-postgresql)
-
-### Chạy migrations
-
-```bash
-# Tạo migration mới
-dotnet ef migrations add <MigrationName> --project src/3.Infrastructure --startup-project src/4.WebAPI
-
-# Apply migration
-dotnet ef database update --project src/3.Infrastructure --startup-project src/4.WebAPI
-
-# Rollback
-dotnet ef database update <PreviousMigrationName> --project src/3.Infrastructure
-```
-
-### Seed data
-Tạo tài khoản admin mặc định:
-- Username: `admin`
-- Email: `admin@swrexam.local`
-- Password: `Admin123!` (nên đổi sau khi tạo)
-
----
-
-## Các module
-
-| Module | Mô tả | Trạng thái |
+| Biến | Bắt buộc | Mô tả |
 |---|---|---|
-| **Auth** | Register, Login, JWT, RBAC | ⏳ Chưa bắt đầu |
-| **User Management** | CRUD users, gán role | ⏳ Chưa bắt đầu |
-| **Semester** | CRUD Semester | ⏳ Chưa bắt đầu |
-| **Subject** | CRUD Subject | ⏳ Chưa bắt đầu |
-| **Subject Offering** | CRUD SubjectOffering | ⏳ Chưa bắt đầu |
-| **Exam** | CRUD Exam, state machine | ⏳ Chưa bắt đầu |
-| **Exam Submission** | Upload files, submit, review | ⏳ Chưa bắt đầu |
-| **Package & Transfer** | Đóng gói, transfer | ⏳ Chưa bắt đầu |
-| **Audit Log** | Ghi log thao tác | ⏳ Chưa bắt đầu |
-| **Extract** | Interface cho AI pipeline | ⏳ Chưa bắt đầu |
-| **AI Grading** | Interface cho AI service | ⏳ Chưa bắt đầu |
+| `ConnectionStrings__DefaultConnection` | ✅ | Npgsql connection string tới Supabase |
+| `JWT_SECRET` | ✅ | Min 32 ký tự, dùng để ký JWT |
+| `JWT_ISSUER` | ✅ | Issuer trong JWT claim |
+| `JWT_AUDIENCE` | ✅ | Audience trong JWT claim |
+| `JWT_EXPIRY_MINUTES` | ⬜ | Mặc định 60 |
+| `ASPNETCORE_ENVIRONMENT` | ⬜ | `Development` / `Production` |
+| `ASPNETCORE_URLS` | ⬜ | Mặc định `http://localhost:5000` |
+| `CORS_ALLOWED_ORIGINS` | ⬜ | Danh sách URL, phân cách dấu phẩy |
 
 ---
 
-## Flow 1 — Phạm vi hiện tại
+## Database & Migrations
 
-Xem chi tiết: [`../doc/requirements.md#4-phạm-vi-scope--server-1--flow-1`](../doc/requirements.md#4-phạm-vi-scope--server-1--flow-1)
+### Schema Supabase là CHUẨN
 
+Schema `public.*` trên Supabase đã được chốt và **KHÔNG được tự ý thay đổi**.
+Nếu cần thay đổi schema, phải có yêu cầu từ người phụ trách database.
+
+**Quy trình thay đổi schema:**
+1. Tạo migration SQL mới trong folder `src/Infrastructure/Migrations/`
+2. EF migration sẽ generate file `*.cs` tương ứng
+3. **KHÔNG tự apply** lên database — chờ user xác nhận
+
+### Các lệnh EF thường dùng
+
+```powershell
+# Generate migration mới
+dotnet ef migrations add <TenMigration> --project src/Infrastructure --startup-project src/WebApi
+
+# Apply migration lên Supabase (chỉ chạy khi user yêu cầu)
+dotnet ef database update --project src/Infrastructure --startup-project src/WebApi
+
+# Xem danh sách migration
+dotnet ef migrations list --project src/Infrastructure --startup-project src/WebApi
+
+# Tạo SQL script (không apply)
+dotnet ef migrations script --project src/Infrastructure --startup-project src/WebApi --output migration.sql
+
+# Rollback migration (cẩn thận — có thể mất data)
+dotnet ef database update <PreviousMigrationName> --project src/Infrastructure --startup-project src/WebApi
 ```
-Register → Login → Auth → Semester → Subject → SubjectOffering →
-Exam → Assign Lecturer → Upload Files → Submit → Review →
-Lock → Package → Transfer to Server 2
-```
 
-### IN-SCOPE
-- ✅ Authentication / Authorization (JWT + RBAC)
-- ✅ Quản lý Semester / Subject / SubjectOffering
-- ✅ Exam CRUD + Assign Lecturer
-- ✅ Upload 3 loại file (Question, AnswerTemplate, Rubric)
-- ✅ Exam state machine (Draft → Submitted → Reviewed → Locked → Packaged)
-- ✅ Package & Transfer (mock/interface)
-- ✅ Audit log
-- ✅ Swagger/OpenAPI
+### Bảng hiện có trên Supabase
 
-### OUT-OF-SCOPE (Flow sau)
-- ❌ Anti-cheating, activity monitoring
-- ❌ Extract, OCR, AI grading
-- ❌ Analytics, dashboard, charts
-- ❌ Student login/nộp bài (Server 2)
+| Bảng | Mô tả |
+|---|---|
+| `user` | Người dùng (student/lecturer/admin) |
+| `semester` | Học kỳ |
+| `examination` | Kỳ thi / Đợt thi |
+| `exam_material` | Đề thi / Tài liệu thi |
+| `submission` | Bài nộp của sinh viên |
+| `grading` | Kết quả chấm điểm |
+
+---
+
+## API Endpoints
+
+### Hiện có
+
+| Method | URL | Mô tả | Auth |
+|---|---|---|---|
+| GET | `/health` | Health check | ❌ |
+| GET | `/api/health` | Health check (controller) | ❌ |
+| GET | `/swagger` | Swagger UI (chỉ Development) | ❌ |
+
+### Sắp thêm (theo Flow 1)
+
+| Module | Endpoints |
+|---|---|
+| Auth | `/api/auth/register`, `/api/auth/login`, `/api/auth/me` |
+| Users | `/api/users` (CRUD) |
+| Semesters | `/api/semesters` (CRUD) |
+| Examinations | `/api/examinations` (CRUD) |
+| ExamMaterials | `/api/examinations/{id}/materials` (upload/list) |
+| Submissions | `/api/submissions` (CRUD, submit) |
+| Gradings | `/api/gradings` (CRUD) |
+
+---
+
+## Rule quan trọng cho AI Agent
+
+> **BẮT BUỘC đọc [`RULE.md`](./RULE.md) trước khi code bất kỳ thứ gì.**
+
+Tóm tắt nhanh:
+1. **KHÔNG ĐẶT SỐ** ở đầu tên folder/project (KHÔNG dùng `1.Domain`, `2.Application`...)
+2. **KHÔNG TỰ Ý SỬA SCHEMA SUPABASE** — phải có yêu cầu từ user
+3. **Mọi request phải có DOC** — cập nhật README.md hoặc RULE.md sau khi xong
+4. **Đa vai (multi-role)** — mỗi task phức tạp phải xác định rõ role chịu trách nhiệm
 
 ---
 
@@ -226,15 +259,22 @@ Lock → Package → Transfer to Server 2
 
 | File | Mô tả |
 |---|---|
-| [`../doc/context.md`](../doc/context.md) | Bối cảnh tổng thể đồ án |
-| [`../doc/requirements.md`](../doc/requirements.md) | Yêu cầu & phạm vi chi tiết |
-| [`../doc/plan.md`](../doc/plan.md) | Kế hoạch & trạng thái task |
-| [`../doc/decisions.md`](../doc/decisions.md) | Lịch sử các quyết định |
-| [`../doc/architecture.md`](../doc/architecture.md) | Kiến trúc chi tiết & DB schema |
-| [`../doc/Phieu_FA26SE034.docx`](../doc/Phieu_FA26SE034.docx) | Đề bài gốc |
+| [`RULE.md`](./RULE.md) | Luật bắt buộc cho AI agent |
+| [`CONTRIBUTING.md`](./CONTRIBUTING.md) | Quy ước đóng góp |
+| [`SECRET_MANAGEMENT.md`](./SECRET_MANAGEMENT.md) | Quản lý secret |
+| `../doc/` | Tài liệu dự án (context, plan, decisions, architecture) |
 
 ---
 
-## Liên hệ / Thông tin nhóm
+## Trạng thái dự án
 
-*(Cập nhật sau khi user cung cấp)*
+| Hạng mục | Trạng thái |
+|---|---|
+| Solution + 4 projects + 2 test projects | ✅ |
+| Entities + EF Configurations | ✅ |
+| AppDbContext + JWT + Swagger setup | ✅ |
+| Migration `InitialSchema` (generated) | ✅ |
+| Apply migration lên Supabase | ⏳ Chờ user test |
+| Auth module (Register/Login) | ⏳ Chưa làm |
+| Semester/Examination/Submission/Grading CRUD | ⏳ Chưa làm |
+| Unit tests | ⏳ Chưa có test case cụ thể |
