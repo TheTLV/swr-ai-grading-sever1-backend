@@ -1,0 +1,85 @@
+---
+description: Luôn cập nhật changelog và todo sau mỗi task
+alwaysApply: true
+---
+
+# Sau Mỗi Task — Cập Nhật Changlog & Todo
+
+## Quy Tắc Bắt Buộc
+
+Sau khi hoàn thành **BẤT KỲ** yêu cầu nào của user, phải làm **ĐỒNG THỜI** hai việc sau:
+
+### 1. Cập nhật `TODO.md` (nếu có)
+
+- Thêm task mới vào danh sách nếu user đề cập feature sắp tới
+- Đánh dấu task đã xong bằng `[x]`
+- Dùng format:
+  ```
+  - [x] <task đã làm> — ngày
+  - [ ] <task sắp làm>
+  ```
+
+### 2. Cập nhật `CHANGELOG.md` (nếu có)
+
+- Thêm dòng mới vào đầu file, format:
+  ```
+  ## YYYY-MM-DD
+  - <mô tả ngắn gọn thay đổi> (@ai)
+  ```
+- Nếu user đề cập tính năng sắp làm, thêm vào mục "## Next" hoặc "## Planned"
+
+### 3. Nếu file `TODO.md` hoặc `CHANGELOG.md` chưa tồn tại
+
+- Tạo file đó ngay
+- Format mẫu cho `TODO.md`:
+  ```
+  # TODO — Dự án
+
+  ## Đang làm
+  - [ ] <task>
+
+  ## Đã xong
+  - [x] <task> — YYYY-MM-DD
+
+  ## Sắp tới
+  - [ ] <task>
+  ```
+- Format mẫu cho `CHANGELOG.md`:
+  ```
+  # Changelog
+
+  ## Next
+  - <planned features>
+
+  ## YYYY-MM-DD
+  - <change>
+  ```
+
+## Tại Sao Quan Trọng
+
+- User là người không rành code, cần tài liệu để hiểu tiến độ
+- AI quên ngữ cảnh qua các session → TODO + CHANGELOG là "bộ nhớ ngoài"
+- Sau mỗi task, context còn tươi → ghi ngay, không đợi cuối
+
+## Ví dụ
+
+**User yêu cầu**: "Thêm chức năng export PDF"
+
+Sau khi code xong, phải làm:
+1. Thêm vào `TODO.md`: `- [x] Export PDF — 2026-09-09`
+2. Thêm vào `CHANGELOG.md`:
+   ```
+   ## 2026-09-09
+   - Thêm chức năng export PDF cho báo cáo (@ai)
+   ```
+3. Nếu user đề cập tính năng tiếp theo (ví dụ "sau này làm import Excel"), thêm vào `## Next`:
+   ```
+   ## Next
+   - Import Excel cho danh sách sinh viên
+   ```
+
+## Lưu Ý
+
+- Không cần hỏi user trước khi cập nhật — đây là rule tự động
+- Cập nhật **ngay sau khi hoàn thành**, không gom lại cuối session
+- Nếu task gặp lỗi → vẫn cập nhật `TODO.md` ghi rõ "đang block" + lý do
