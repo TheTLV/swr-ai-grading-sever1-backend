@@ -40,7 +40,10 @@ bld/
 # ASP.NET Core / API
 # ============================================================
 appsettings.*.Local.json
+appsettings.*.Development.json
 appsettings.*.Production.json
+appsettings.Development.json
+appsettings.Production.json
 secrets.json
 
 # ============================================================
