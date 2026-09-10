@@ -30,7 +30,13 @@ builder.Services.AddScoped<IExaminationService, ExaminationService>();
 builder.Services.AddScoped<IExaminationRepository, ExaminationRepository>();
 builder.Services.AddScoped<IExamMaterialService, ExamMaterialService>();
 builder.Services.AddScoped<IExamMaterialRepository, ExamMaterialRepository>();
-builder.Services.AddHttpClient<ISupabaseStorage, SupabaseStorage>();
+builder.Services.AddHttpClient<SupabaseStorage>();
+
+builder.Services.AddScoped<ISupabaseStorage>(sp =>
+{
+    var inner = sp.GetRequiredService<SupabaseStorage>();
+    return new EncryptedSupabaseStorage(inner);
+});
 
 // No JWT
 // No AuthService
