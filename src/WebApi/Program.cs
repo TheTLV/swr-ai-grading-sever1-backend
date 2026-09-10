@@ -3,6 +3,7 @@ using Application.Services;
 using DotNetEnv;
 using FluentValidation.AspNetCore;
 using Infrastructure.Persistence.Repositories;
+using Infrastructure.Storage;
 using Microsoft.OpenApi.Models;
 using Infrastructure.Configurations;
 
@@ -27,6 +28,9 @@ builder.Services.AddScoped<ISemesterService, SemesterService>();
 builder.Services.AddScoped<ISemesterRepository, SemesterRepository>();
 builder.Services.AddScoped<IExaminationService, ExaminationService>();
 builder.Services.AddScoped<IExaminationRepository, ExaminationRepository>();
+builder.Services.AddScoped<IExamMaterialService, ExamMaterialService>();
+builder.Services.AddScoped<IExamMaterialRepository, ExamMaterialRepository>();
+builder.Services.AddHttpClient<ISupabaseStorage, SupabaseStorage>();
 
 // No JWT
 // No AuthService
