@@ -56,3 +56,16 @@ public class CreateExamMaterialRequest
     public IFormFile? AnswerRubric { get; set; }
     public IFormFile? AnswerTemplate { get; set; }
 }
+
+public sealed class CreateExamMaterialsRequest
+{
+    public Guid ExaminationId { get; set; }
+    public List<CreateExamMaterialItemRequest> Materials { get; set; } = new();
+}
+
+public sealed class CreateExamMaterialItemRequest
+{
+    public IFormFile? Question { get; set; }
+    public IFormFile? AnswerRubric { get; set; }
+    public IFormFile? AnswerTemplate { get; set; }
+}

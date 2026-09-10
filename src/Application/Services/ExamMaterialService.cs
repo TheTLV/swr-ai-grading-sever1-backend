@@ -34,12 +34,62 @@ public sealed class ExamMaterialService : IExamMaterialService
     {
         if (files.Count == 0) return Result<IReadOnlyList<ExamMaterialMetadataDTO>>.Failure("At least one file is required.", "FILES_REQUIRED");
         if (await _examinationRepository.GetByIdAsync(examinationId, ct) is null) return Result<IReadOnlyList<ExamMaterialMetadataDTO>>.Failure("Examination not found.", "EXAMINATION_NOT_FOUND");
+        var materialResult = await CreateMaterialAsync(examinationId, files, ct);
+        if (!materialResult.IsSuccess) return Result<IReadOnlyList<ExamMaterialMetadataDTO>>.Failure(materialResult.Error!, materialResult.ErrorCode);
+        await _repository.AddAsync(materialResult.Data!, ct);
+        await _unitOfWork.SaveChangesAsync(ct);
+        return Result<IReadOnlyList<ExamMaterialMetadataDTO>>.Success(new[] { await ToMetadataAsync(materialResult.Data!) });
+    }
+
+    public async Task<Result<IReadOnlyList<ExamMaterialMetadataDTO>>> CreateManyAsync(
+        Guid examinationId,
+        IReadOnlyList<IReadOnlyList<MaterialFileUpload>> materials,
+        CancellationToken ct = default)
+    {
+        if (materials.Count == 0) return Result<IReadOnlyList<ExamMaterialMetadataDTO>>.Failure("At least one material is required.", "MATERIALS_REQUIRED");
+        if (materials.Any(files => files.Count == 0)) return Result<IReadOnlyList<ExamMaterialMetadataDTO>>.Failure("Each material must contain at least one file.", "FILES_REQUIRED");
+        if (await _examinationRepository.GetByIdAsync(examinationId, ct) is null) return Result<IReadOnlyList<ExamMaterialMetadataDTO>>.Failure("Examination not found.", "EXAMINATION_NOT_FOUND");
+
+        var created = new List<ExamMaterial>();
+        try
+        {
+            foreach (IReadOnlyList<MaterialFileUpload>? files in materials)
+            {
+                var materialResult = await CreateMaterialAsync(examinationId, files, ct);
+                if (!materialResult.IsSuccess)
+                    return Result<IReadOnlyList<ExamMaterialMetadataDTO>>.Failure(materialResult.Error!, materialResult.ErrorCode);
+
+                created.Add(materialResult.Data!);
+                await _repository.AddAsync(materialResult.Data!, ct);
+            }
+
+            await _unitOfWork.SaveChangesAsync(ct);
+            return Result<IReadOnlyList<ExamMaterialMetadataDTO>>.Success(
+                await Task.WhenAll(created.Select(ToMetadataAsync)));
+        }
+        catch
+        {
+            foreach (var material in created)
+            {
+                foreach (var path in GetPaths(material).Values)
+                {
+                    try { await _storage.DeleteAsync(path, CancellationToken.None); } catch { }
+                }
+            }
+
+            throw;
+        }
+    }
+
+    private async Task<Result<ExamMaterial>> CreateMaterialAsync(
+        Guid examinationId,
+        IReadOnlyList<MaterialFileUpload> files,
+        CancellationToken ct)
+    {
         var material = new ExamMaterial { ExamMaterialCode = await GenerateCodeAsync(ct), CreatedDate = DateTime.UtcNow, UpdatedDate = DateTime.UtcNow, Status = ExamMaterialStatus.Ready, ExaminationId = examinationId };
         var uploadResult = await UploadFilesAsync(material, files, ct);
-        if (!uploadResult.IsSuccess) return Result<IReadOnlyList<ExamMaterialMetadataDTO>>.Failure(uploadResult.Error!, uploadResult.ErrorCode);
-        await _repository.AddAsync(material, ct);
-        await _unitOfWork.SaveChangesAsync(ct);
-        return Result<IReadOnlyList<ExamMaterialMetadataDTO>>.Success(new[] { await ToMetadataAsync(material) });
+        if (!uploadResult.IsSuccess) return Result<ExamMaterial>.Failure(uploadResult.Error!, uploadResult.ErrorCode);
+        return Result<ExamMaterial>.Success(material);
     }
 
     public async Task<Result<ExamMaterialDetailDTO>> AddFilesAsync(Guid id, IReadOnlyList<MaterialFileUpload> files, CancellationToken ct = default)
@@ -88,14 +138,32 @@ public sealed class ExamMaterialService : IExamMaterialService
 
     private async Task<Result> UploadFilesAsync(ExamMaterial material, IReadOnlyList<MaterialFileUpload> files, CancellationToken ct)
     {
+        // Validate every file BEFORE uploading any of them. Doing this inline inside
+        // the upload loop (as before) meant a later file failing validation would
+        // leave earlier, already-uploaded files orphaned in storage with nothing
+        // referencing them, since a `return` here skips the catch/cleanup block below.
+        foreach (var file in files)
+        {
+            if (!Enum.IsDefined(file.FileType) || string.IsNullOrWhiteSpace(file.FileName) || file.Length <= 0)
+                return Result.Failure("Each file must have a valid type, name, and content.", "INVALID_FILE");
+        }
+
         var uploaded = new List<string>();
         try
         {
             foreach (var file in files)
             {
-                if (!Enum.IsDefined(file.FileType) || string.IsNullOrWhiteSpace(file.FileName) || file.Length <= 0) return Result.Failure("Each file must have a valid type, name, and content.", "INVALID_FILE");
                 var path = $"examinations/{material.ExaminationId}/{material.ExamMaterialCode}/{GetTypeCode(file.FileType)}/{Guid.NewGuid():N}_{Path.GetFileName(file.FileName)}";
-                await _storage.UploadAsync(path, file.Content, file.ContentType, ct); uploaded.Add(path); SetPath(material, file.FileType, path);
+                try
+                {
+                    await _storage.UploadAsync(path, file.Content, file.ContentType, ct);
+                }
+                finally
+                {
+                    await file.Content.DisposeAsync();
+                }
+                uploaded.Add(path);
+                SetPath(material, file.FileType, path);
             }
             return Result.Success();
         }
@@ -104,7 +172,17 @@ public sealed class ExamMaterialService : IExamMaterialService
 
     private async Task<ExamMaterial?> FindAsync(Guid id, CancellationToken ct) { var material = await _repository.GetByIdAsync(id, ct); return material is null || material.IsDeleted ? null : material; }
     private async Task<string> GenerateCodeAsync(CancellationToken ct) { do { var code = $"EM{Random.Shared.Next(0, 1_000_000):D6}"; if (!await _repository.IsCodeExistsAsync(code, ct)) return code; } while (true); }
-    private static string GetTypeCode(ExamMaterialFileType type) => type == ExamMaterialFileType.Question ? "EQ" : "AT";
+
+    // Fixed: AnswerRubric and AnswerTemplate previously both fell through to "AT",
+    // filing rubric files under an "answer template" folder segment.
+    private static string GetTypeCode(ExamMaterialFileType type) => type switch
+    {
+        ExamMaterialFileType.Question => "EQ",
+        ExamMaterialFileType.AnswerRubric => "AR",
+        ExamMaterialFileType.AnswerTemplate => "AT",
+        _ => throw new ArgumentOutOfRangeException(nameof(type), type, "Unknown exam material file type.")
+    };
+
     private static void SetPath(ExamMaterial m, ExamMaterialFileType type, string path) { if (type == ExamMaterialFileType.Question) m.FileQuestionDocs = path; else if (type == ExamMaterialFileType.AnswerRubric) m.FileAnswerRubric = path; else m.FileAnswerTemplate = path; }
     private static Dictionary<ExamMaterialFileType, string> GetPaths(ExamMaterial m) => new[] { (ExamMaterialFileType.Question, m.FileQuestionDocs), (ExamMaterialFileType.AnswerRubric, m.FileAnswerRubric), (ExamMaterialFileType.AnswerTemplate, m.FileAnswerTemplate) }.Where(x => x.Item2 is not null).ToDictionary(x => x.Item1, x => x.Item2!);
 
