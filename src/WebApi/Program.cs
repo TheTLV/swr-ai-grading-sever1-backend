@@ -1,132 +1,87 @@
-using System.Text;
-using Application.Common;
-using Application.Common.Options;
 using Application.Interfaces;
 using Application.Services;
 using DotNetEnv;
 using FluentValidation.AspNetCore;
-using Infrastructure.Persistence;
 using Infrastructure.Persistence.Repositories;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
+using Infrastructure.Storage;
 using Microsoft.OpenApi.Models;
 using Infrastructure.Configurations;
 
-
-Env.Load();
-
 var builder = WebApplication.CreateBuilder(args);
 
-// 2. Đọc connection string từ env
+var envPath = Path.Combine(
+    builder.Environment.ContentRootPath,
+    "..",
+    "..",
+    ".env"
+);
 
-builder.Services.AddDatabase(builder.Configuration);
+Env.Load(Path.GetFullPath(envPath));
 
-// 4. Unit of Work + Repositories (DIP)
+// Database
+builder.Services.AddDatabase();
+
+// Unit of Work + Repositories
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
-//builder.Services.AddScoped<IUserRepository, UserRepository>();
-//builder.Services.AddScoped<ISemesterRepository, SemesterRepository>();
-////builder.Services.AddScoped<IExaminationRepository, ExaminationRepository>();
-//builder.Services.AddScoped<ISubmissionRepository, SubmissionRepository>();
-//builder.Services.AddScoped<IExamMaterialRepository, ExamMaterialRepository>();
-//builder.Services.AddScoped<IGradingRepository, GradingRepository>();
 
-// 4. JWT Authentication + Settings
-var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET")
-    ?? throw new InvalidOperationException("JWT_SECRET is not set.");
-var jwtIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ?? "SwrAiGradingApi";
-var jwtAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? "SwrAiGradingClient";
+builder.Services.AddScoped<ISemesterService, SemesterService>();
+builder.Services.AddScoped<ISemesterRepository, SemesterRepository>();
+builder.Services.AddScoped<IExaminationService, ExaminationService>();
+builder.Services.AddScoped<IExaminationRepository, ExaminationRepository>();
+builder.Services.AddScoped<IExamMaterialService, ExamMaterialService>();
+builder.Services.AddScoped<IExamMaterialRepository, ExamMaterialRepository>();
+builder.Services.AddHttpClient<ISupabaseStorage, SupabaseStorage>();
 
-builder.Services.Configure<JwtSettings>(options =>
-{
-    options.Secret = jwtSecret;
-    options.Issuer = jwtIssuer;
-    options.Audience = jwtAudience;
-    options.ExpirationMinutes = 60;
-});
+// No JWT
+// No AuthService
+// No AuthSeeder
 
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = jwtIssuer,
-            ValidAudience = jwtAudience,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
-            ClockSkew = TimeSpan.Zero
-        };
-    });
-builder.Services.AddAuthorization();
-
-// 5. Đăng ký Application Services
-builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
-builder.Services.AddScoped<IAuthService, AuthService>();
-//builder.Services.AddScoped<IUserService, UserService>();
-//builder.Services.AddScoped<ISemesterService, SemesterService>();
-//builder.Services.AddScoped<IExaminationService, ExaminationService>();
-//builder.Services.AddScoped<ISubmissionService, SubmissionService>();
-//builder.Services.AddScoped<IExamMaterialService, ExamMaterialService>();
-//builder.Services.AddScoped<IGradingService, GradingService>();
-
-// 5.1 Bind AuthOptions từ appsettings (SeedAccounts) + register Seeder
-builder.Services.Configure<AuthOptions>(builder.Configuration.GetSection(AuthOptions.SectionName));
-builder.Services.AddScoped<IAuthSeeder, AuthSeeder>();
-
-// 6. Controllers + FluentValidation
+// Controllers
 builder.Services.AddControllers();
+
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddFluentValidationClientsideAdapters();
 
-// 7. CORS
+// CORS
 var corsOrigins = (Environment.GetEnvironmentVariable("CORS_ALLOWED_ORIGINS") ?? "")
-    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    .Split(
+        ',',
+        StringSplitOptions.RemoveEmptyEntries |
+        StringSplitOptions.TrimEntries);
+
 builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
 {
     if (corsOrigins.Length > 0)
-        p.WithOrigins(corsOrigins).AllowAnyHeader().AllowAnyMethod().AllowCredentials();
+    {
+        p.WithOrigins(corsOrigins)
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    }
     else
-        p.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
+    {
+        p.AllowAnyOrigin()
+            .AllowAnyHeader()
+            .AllowAnyMethod();
+    }
 }));
 
-// 8. Swagger + Bearer
+// Swagger
 builder.Services.AddEndpointsApiExplorer();
+
 builder.Services.AddSwaggerGen(c =>
 {
-    c.SwaggerDoc("v1", new OpenApiInfo { Title = "Backend.Server1", Version = "v1" });
-    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-    {
-        Name = "Authorization",
-        Type = SecuritySchemeType.Http,
-        Scheme = "bearer",
-        BearerFormat = "JWT",
-        In = ParameterLocation.Header,
-        Description = "Nhập JWT token."
-    });
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
+    c.SwaggerDoc(
+        "v1",
+        new OpenApiInfo
         {
-            new OpenApiSecurityScheme
-            {
-                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
-            },
-            Array.Empty<string>()
-        }
-    });
+            Title = "Backend.Server1",
+            Version = "v1"
+        });
 });
 
 var app = builder.Build();
 
-// 10. Seed tài khoản gốc (Admin/Lecturer/Student) khi DB trống — chạy trước pipeline.
-using (var scope = app.Services.CreateScope())
-{
-    var seeder = scope.ServiceProvider.GetRequiredService<IAuthSeeder>();
-    await seeder.SeedAsync();
-}
-
-// 9. HTTP pipeline
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -134,11 +89,13 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors();
-app.UseAuthentication();
-app.UseAuthorization();
+
+// No authentication/authorization
+// app.UseAuthentication();
+// app.UseAuthorization();
+
 app.MapControllers();
 
-// Health check đơn giản
 app.MapGet("/health", () => Results.Ok(new
 {
     status = "healthy",

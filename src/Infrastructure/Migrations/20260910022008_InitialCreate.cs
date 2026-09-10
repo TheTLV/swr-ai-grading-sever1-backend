@@ -50,7 +50,7 @@ namespace Infrastructure.Migrations
                 columns: table => new
                 {
                     examination_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    examination_code = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    examination_code = table.Column<string>(type: "character varying(21)", maxLength: 21, nullable: false),
                     name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                     examination_type = table.Column<string>(type: "character varying(5)", maxLength: 5, nullable: false),
                     start_date = table.Column<DateOnly>(type: "date", nullable: false),
@@ -119,12 +119,13 @@ namespace Infrastructure.Migrations
                     file_question_docs = table.Column<string>(type: "text", nullable: true),
                     file_answer_rubric = table.Column<string>(type: "text", nullable: true),
                     file_answer_template = table.Column<string>(type: "text", nullable: true),
+                    file_examination_type = table.Column<int>(type: "integer", nullable: false),
                     created_date = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     updated_date = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     is_deleted = table.Column<bool>(type: "boolean", nullable: false),
                     status = table.Column<int>(type: "integer", nullable: false),
-                    create_by_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    examination_id = table.Column<Guid>(type: "uuid", nullable: false)
+                    examination_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    LecturerId = table.Column<Guid>(type: "uuid", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -136,11 +137,10 @@ namespace Infrastructure.Migrations
                         principalColumn: "examination_id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_exam_materials_lecturers_create_by_id",
-                        column: x => x.create_by_id,
+                        name: "FK_exam_materials_lecturers_LecturerId",
+                        column: x => x.LecturerId,
                         principalTable: "lecturers",
-                        principalColumn: "id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "id");
                 });
 
             migrationBuilder.CreateTable(
@@ -194,14 +194,14 @@ namespace Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateIndex(
-                name: "IX_exam_materials_create_by_id",
-                table: "exam_materials",
-                column: "create_by_id");
-
-            migrationBuilder.CreateIndex(
                 name: "IX_exam_materials_examination_id",
                 table: "exam_materials",
                 column: "examination_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_exam_materials_LecturerId",
+                table: "exam_materials",
+                column: "LecturerId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_examinations_examination_code",

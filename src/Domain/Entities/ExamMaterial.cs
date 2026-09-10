@@ -26,6 +26,10 @@ public class ExamMaterial
     public string? FileAnswerTemplate { get; set; }
 
     [Required]
+    [Column("file_examination_type")]
+    public ExamMaterialFileType FileType { get; set; }
+
+    [Required]
     [Column("created_date")]
     public DateTime CreatedDate { get; set; }
 
@@ -41,16 +45,16 @@ public class ExamMaterial
     public ExamMaterialStatus Status { get; set; }
 
     [Required]
-    [Column("create_by_id")]
-    [ForeignKey(nameof(CreateBy))]
-    public Guid CreateById { get; set; }
-
-    public Lecturer CreateBy { get; set; } = null!;
-
-    [Required]
     [Column("examination_id")]
     [ForeignKey(nameof(Examination))]
     public Guid ExaminationId { get; set; }
 
     public Examination Examination { get; set; } = null!;
+
+    //[Required]
+    //[Column("create_by_id")]
+    //[ForeignKey(nameof(CreateBy))]
+    //public Guid CreateById { get; set; }
+
+    //public Lecturer CreateBy { get; set; } = null!;
 }
