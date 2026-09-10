@@ -34,12 +34,62 @@ public sealed class ExamMaterialService : IExamMaterialService
     {
         if (files.Count == 0) return Result<IReadOnlyList<ExamMaterialMetadataDTO>>.Failure("At least one file is required.", "FILES_REQUIRED");
         if (await _examinationRepository.GetByIdAsync(examinationId, ct) is null) return Result<IReadOnlyList<ExamMaterialMetadataDTO>>.Failure("Examination not found.", "EXAMINATION_NOT_FOUND");
+        var materialResult = await CreateMaterialAsync(examinationId, files, ct);
+        if (!materialResult.IsSuccess) return Result<IReadOnlyList<ExamMaterialMetadataDTO>>.Failure(materialResult.Error!, materialResult.ErrorCode);
+        await _repository.AddAsync(materialResult.Data!, ct);
+        await _unitOfWork.SaveChangesAsync(ct);
+        return Result<IReadOnlyList<ExamMaterialMetadataDTO>>.Success(new[] { await ToMetadataAsync(materialResult.Data!) });
+    }
+
+    public async Task<Result<IReadOnlyList<ExamMaterialMetadataDTO>>> CreateManyAsync(
+        Guid examinationId,
+        IReadOnlyList<IReadOnlyList<MaterialFileUpload>> materials,
+        CancellationToken ct = default)
+    {
+        if (materials.Count == 0) return Result<IReadOnlyList<ExamMaterialMetadataDTO>>.Failure("At least one material is required.", "MATERIALS_REQUIRED");
+        if (materials.Any(files => files.Count == 0)) return Result<IReadOnlyList<ExamMaterialMetadataDTO>>.Failure("Each material must contain at least one file.", "FILES_REQUIRED");
+        if (await _examinationRepository.GetByIdAsync(examinationId, ct) is null) return Result<IReadOnlyList<ExamMaterialMetadataDTO>>.Failure("Examination not found.", "EXAMINATION_NOT_FOUND");
+
+        var created = new List<ExamMaterial>();
+        try
+        {
+            foreach (IReadOnlyList<MaterialFileUpload>? files in materials)
+            {
+                var materialResult = await CreateMaterialAsync(examinationId, files, ct);
+                if (!materialResult.IsSuccess)
+                    return Result<IReadOnlyList<ExamMaterialMetadataDTO>>.Failure(materialResult.Error!, materialResult.ErrorCode);
+
+                created.Add(materialResult.Data!);
+                await _repository.AddAsync(materialResult.Data!, ct);
+            }
+
+            await _unitOfWork.SaveChangesAsync(ct);
+            return Result<IReadOnlyList<ExamMaterialMetadataDTO>>.Success(
+                await Task.WhenAll(created.Select(ToMetadataAsync)));
+        }
+        catch
+        {
+            foreach (var material in created)
+            {
+                foreach (var path in GetPaths(material).Values)
+                {
+                    try { await _storage.DeleteAsync(path, CancellationToken.None); } catch { }
+                }
+            }
+
+            throw;
+        }
+    }
+
+    private async Task<Result<ExamMaterial>> CreateMaterialAsync(
+        Guid examinationId,
+        IReadOnlyList<MaterialFileUpload> files,
+        CancellationToken ct)
+    {
         var material = new ExamMaterial { ExamMaterialCode = await GenerateCodeAsync(ct), CreatedDate = DateTime.UtcNow, UpdatedDate = DateTime.UtcNow, Status = ExamMaterialStatus.Ready, ExaminationId = examinationId };
         var uploadResult = await UploadFilesAsync(material, files, ct);
-        if (!uploadResult.IsSuccess) return Result<IReadOnlyList<ExamMaterialMetadataDTO>>.Failure(uploadResult.Error!, uploadResult.ErrorCode);
-        await _repository.AddAsync(material, ct);
-        await _unitOfWork.SaveChangesAsync(ct);
-        return Result<IReadOnlyList<ExamMaterialMetadataDTO>>.Success(new[] { await ToMetadataAsync(material) });
+        if (!uploadResult.IsSuccess) return Result<ExamMaterial>.Failure(uploadResult.Error!, uploadResult.ErrorCode);
+        return Result<ExamMaterial>.Success(material);
     }
 
     public async Task<Result<ExamMaterialDetailDTO>> AddFilesAsync(Guid id, IReadOnlyList<MaterialFileUpload> files, CancellationToken ct = default)

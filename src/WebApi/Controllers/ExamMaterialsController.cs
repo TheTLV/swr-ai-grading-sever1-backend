@@ -53,6 +53,65 @@ public sealed class ExamMaterialsController : ControllerBase
         return BadRequest(result);
     }
 
+    [HttpPost("batch")]
+    [RequestSizeLimit(524_288_000)]
+    [Consumes("multipart/form-data")]
+    public async Task<ActionResult<IReadOnlyList<ExamMaterialMetadataDTO>>> CreateMany(
+       [FromForm] CreateExamMaterialsRequest request,
+       CancellationToken ct)
+    {
+       var materials = request.Materials
+           .Select(item => (IReadOnlyList<MaterialFileUpload>)BuildUploads(item.Question, item.AnswerRubric, item.AnswerTemplate))
+           .ToList();
+
+       var result = await _service.CreateManyAsync(request.ExaminationId, materials, ct);
+
+       if (result.IsSuccess) return Ok(result.Data);
+       if (result.ErrorCode == "EXAMINATION_NOT_FOUND") return NotFound(result);
+       return BadRequest(result);
+    }
+
+    // [HttpPost("batch")]
+    // [RequestSizeLimit(524_288_000)]
+    // [Consumes("multipart/form-data")]
+    // public async Task<ActionResult<IReadOnlyList<ExamMaterialMetadataDTO>>> CreateMany(
+    // [FromForm] Guid examinationId,
+    // [FromForm] List<IFormFile> questions,
+    // [FromForm] List<IFormFile> answerRubrics,
+    // [FromForm] List<IFormFile> answerTemplates,
+    // CancellationToken ct)
+    // {
+    //     if (questions.Count != answerRubrics.Count ||
+    //         questions.Count != answerTemplates.Count)
+    //     {
+    //         return BadRequest(
+    //             "Each question must have exactly one rubric and one answer template.");
+    //     }
+
+    //     var materials = new List<IReadOnlyList<MaterialFileUpload>>();
+
+    //     for (var i = 0; i < questions.Count; i++)
+    //     {
+    //         materials.Add(BuildUploads(
+    //             questions[i],
+    //             answerRubrics[i],
+    //             answerTemplates[i]));
+    //     }
+
+    //     var result = await _service.CreateManyAsync(
+    //         examinationId,
+    //         materials,
+    //         ct);
+
+    //     if (result.IsSuccess)
+    //         return Ok(result.Data);
+
+    //     if (result.ErrorCode == "EXAMINATION_NOT_FOUND")
+    //         return NotFound(result);
+
+    //     return BadRequest(result);
+    // }
+
     [HttpPost("{id:guid}/files")]
     [RequestSizeLimit(524_288_000)]
     [Consumes("multipart/form-data")]
