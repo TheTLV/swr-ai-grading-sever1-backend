@@ -51,10 +51,10 @@ public class ExamMaterial
 
     public Examination Examination { get; set; } = null!;
 
-    //[Required]
-    //[Column("create_by_id")]
-    //[ForeignKey(nameof(CreateBy))]
-    //public Guid CreateById { get; set; }
+    [Required]
+    [Column("create_by_id")]
+    [ForeignKey(nameof(CreateBy))]
+    public Guid CreateById { get; set; }
 
-    //public Lecturer CreateBy { get; set; } = null!;
+    public Lecturer CreateBy { get; set; } = null!;
 }

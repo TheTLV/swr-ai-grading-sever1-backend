@@ -12,9 +12,10 @@ public sealed class ExamMaterialService : IExamMaterialService
     private readonly IExaminationRepository _examinationRepository;
     private readonly ISupabaseStorage _storage;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly IUserRepository _userRepository;
 
-    public ExamMaterialService(IExamMaterialRepository repository, IExaminationRepository examinationRepository, ISupabaseStorage storage, IUnitOfWork unitOfWork)
-    { _repository = repository; _examinationRepository = examinationRepository; _storage = storage; _unitOfWork = unitOfWork; }
+    public ExamMaterialService(IExamMaterialRepository repository, IExaminationRepository examinationRepository, ISupabaseStorage storage, IUnitOfWork unitOfWork, IUserRepository userRepository)
+    { _repository = repository; _examinationRepository = examinationRepository; _storage = storage; _unitOfWork = unitOfWork; _userRepository = userRepository; }
 
     public async Task<PagedResult<ExamMaterialMetadataDTO>> GetPagedAsync(PagedRequest request, CancellationToken ct = default)
     {
@@ -30,11 +31,12 @@ public sealed class ExamMaterialService : IExamMaterialService
         return material is null ? Result<ExamMaterialDetailDTO>.Failure("Exam material not found.", "EXAM_MATERIAL_NOT_FOUND") : Result<ExamMaterialDetailDTO>.Success(await ToDetailAsync(material));
     }
 
-    public async Task<Result<IReadOnlyList<ExamMaterialMetadataDTO>>> CreateAsync(Guid examinationId, IReadOnlyList<MaterialFileUpload> files, CancellationToken ct = default)
+    public async Task<Result<IReadOnlyList<ExamMaterialMetadataDTO>>> CreateAsync(Guid examinationId, IReadOnlyList<MaterialFileUpload> files, Guid createdById, CancellationToken ct = default)
     {
         if (files.Count == 0) return Result<IReadOnlyList<ExamMaterialMetadataDTO>>.Failure("At least one file is required.", "FILES_REQUIRED");
         if (await _examinationRepository.GetByIdAsync(examinationId, ct) is null) return Result<IReadOnlyList<ExamMaterialMetadataDTO>>.Failure("Examination not found.", "EXAMINATION_NOT_FOUND");
-        var materialResult = await CreateMaterialAsync(examinationId, files, ct);
+        if (await _userRepository.GetLecturerByIdAsync(createdById, ct) is null) return Result<IReadOnlyList<ExamMaterialMetadataDTO>>.Failure("Only a lecturer can create exam materials.", "LECTURER_REQUIRED");
+        var materialResult = await CreateMaterialAsync(examinationId, files, createdById, ct);
         if (!materialResult.IsSuccess) return Result<IReadOnlyList<ExamMaterialMetadataDTO>>.Failure(materialResult.Error!, materialResult.ErrorCode);
         await _repository.AddAsync(materialResult.Data!, ct);
         await _unitOfWork.SaveChangesAsync(ct);
@@ -44,18 +46,20 @@ public sealed class ExamMaterialService : IExamMaterialService
     public async Task<Result<IReadOnlyList<ExamMaterialMetadataDTO>>> CreateManyAsync(
         Guid examinationId,
         IReadOnlyList<IReadOnlyList<MaterialFileUpload>> materials,
+        Guid createdById,
         CancellationToken ct = default)
     {
         if (materials.Count == 0) return Result<IReadOnlyList<ExamMaterialMetadataDTO>>.Failure("At least one material is required.", "MATERIALS_REQUIRED");
         if (materials.Any(files => files.Count == 0)) return Result<IReadOnlyList<ExamMaterialMetadataDTO>>.Failure("Each material must contain at least one file.", "FILES_REQUIRED");
         if (await _examinationRepository.GetByIdAsync(examinationId, ct) is null) return Result<IReadOnlyList<ExamMaterialMetadataDTO>>.Failure("Examination not found.", "EXAMINATION_NOT_FOUND");
+        if (await _userRepository.GetLecturerByIdAsync(createdById, ct) is null) return Result<IReadOnlyList<ExamMaterialMetadataDTO>>.Failure("Only a lecturer can create exam materials.", "LECTURER_REQUIRED");
 
         var created = new List<ExamMaterial>();
         try
         {
             foreach (IReadOnlyList<MaterialFileUpload>? files in materials)
             {
-                var materialResult = await CreateMaterialAsync(examinationId, files, ct);
+                var materialResult = await CreateMaterialAsync(examinationId, files, createdById, ct);
                 if (!materialResult.IsSuccess)
                     return Result<IReadOnlyList<ExamMaterialMetadataDTO>>.Failure(materialResult.Error!, materialResult.ErrorCode);
 
@@ -84,9 +88,10 @@ public sealed class ExamMaterialService : IExamMaterialService
     private async Task<Result<ExamMaterial>> CreateMaterialAsync(
         Guid examinationId,
         IReadOnlyList<MaterialFileUpload> files,
+        Guid createdById,
         CancellationToken ct)
     {
-        var material = new ExamMaterial { ExamMaterialCode = await GenerateCodeAsync(ct), CreatedDate = DateTime.UtcNow, UpdatedDate = DateTime.UtcNow, Status = ExamMaterialStatus.Ready, ExaminationId = examinationId };
+        var material = new ExamMaterial { ExamMaterialCode = await GenerateCodeAsync(ct), CreatedDate = DateTime.UtcNow, UpdatedDate = DateTime.UtcNow, Status = ExamMaterialStatus.Ready, ExaminationId = examinationId, CreateById = createdById };
         var uploadResult = await UploadFilesAsync(material, files, ct);
         if (!uploadResult.IsSuccess) return Result<ExamMaterial>.Failure(uploadResult.Error!, uploadResult.ErrorCode);
         return Result<ExamMaterial>.Success(material);

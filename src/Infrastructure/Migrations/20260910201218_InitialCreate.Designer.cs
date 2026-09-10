@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260910022008_InitialCreate")]
+    [Migration("20260910201218_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -31,6 +31,10 @@ namespace Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("exam_material_id");
+
+                    b.Property<Guid>("CreateById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("create_by_id");
 
                     b.Property<DateTime>("CreatedDate")
                         .HasColumnType("timestamp with time zone")
@@ -66,9 +70,6 @@ namespace Infrastructure.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
 
-                    b.Property<Guid?>("LecturerId")
-                        .HasColumnType("uuid");
-
                     b.Property<int>("Status")
                         .HasColumnType("integer")
                         .HasColumnName("status");
@@ -79,9 +80,9 @@ namespace Infrastructure.Migrations
 
                     b.HasKey("ExamMaterialId");
 
-                    b.HasIndex("ExaminationId");
+                    b.HasIndex("CreateById");
 
-                    b.HasIndex("LecturerId");
+                    b.HasIndex("ExaminationId");
 
                     b.ToTable("exam_materials");
                 });
@@ -309,6 +310,12 @@ namespace Infrastructure.Migrations
                         .HasColumnType("character varying(20)")
                         .HasColumnName("cccd");
 
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("email");
+
                     b.Property<string>("FullName")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -379,15 +386,19 @@ namespace Infrastructure.Migrations
 
             modelBuilder.Entity("Domain.Entities.ExamMaterial", b =>
                 {
+                    b.HasOne("Domain.Entities.Lecturer", "CreateBy")
+                        .WithMany("ExamMaterialsCreated")
+                        .HasForeignKey("CreateById")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.HasOne("Domain.Entities.Examination", "Examination")
                         .WithMany("ExamMaterials")
                         .HasForeignKey("ExaminationId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("Domain.Entities.Lecturer", null)
-                        .WithMany("ExamMaterialsCreated")
-                        .HasForeignKey("LecturerId");
+                    b.Navigation("CreateBy");
 
                     b.Navigation("Examination");
                 });
