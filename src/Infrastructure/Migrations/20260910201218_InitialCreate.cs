@@ -33,6 +33,7 @@ namespace Infrastructure.Migrations
                 {
                     id = table.Column<Guid>(type: "uuid", nullable: false),
                     full_name = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    email = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                     birthday = table.Column<DateOnly>(type: "date", nullable: false),
                     password_hash = table.Column<string>(type: "text", nullable: false),
                     role = table.Column<int>(type: "integer", nullable: false),
@@ -125,7 +126,7 @@ namespace Infrastructure.Migrations
                     is_deleted = table.Column<bool>(type: "boolean", nullable: false),
                     status = table.Column<int>(type: "integer", nullable: false),
                     examination_id = table.Column<Guid>(type: "uuid", nullable: false),
-                    LecturerId = table.Column<Guid>(type: "uuid", nullable: true)
+                    create_by_id = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -137,10 +138,11 @@ namespace Infrastructure.Migrations
                         principalColumn: "examination_id",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_exam_materials_lecturers_LecturerId",
-                        column: x => x.LecturerId,
+                        name: "FK_exam_materials_lecturers_create_by_id",
+                        column: x => x.create_by_id,
                         principalTable: "lecturers",
-                        principalColumn: "id");
+                        principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -194,14 +196,14 @@ namespace Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateIndex(
+                name: "IX_exam_materials_create_by_id",
+                table: "exam_materials",
+                column: "create_by_id");
+
+            migrationBuilder.CreateIndex(
                 name: "IX_exam_materials_examination_id",
                 table: "exam_materials",
                 column: "examination_id");
-
-            migrationBuilder.CreateIndex(
-                name: "IX_exam_materials_LecturerId",
-                table: "exam_materials",
-                column: "LecturerId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_examinations_examination_code",

@@ -17,6 +17,12 @@ public class User
     public string FullName { get; set; } = string.Empty;
 
     [Required]
+    [MaxLength(200)]
+    [EmailAddress]
+    [Column("email")]
+    public string Email { get; set; } = string.Empty;
+
+    [Required]
     [Column("birthday", TypeName = "date")]
     public DateOnly Birthday { get; set; }
 

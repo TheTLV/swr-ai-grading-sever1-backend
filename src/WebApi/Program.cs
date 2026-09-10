@@ -1,11 +1,15 @@
 using Application.Interfaces;
+using Application.Common;
 using Application.Services;
 using DotNetEnv;
 using FluentValidation.AspNetCore;
 using Infrastructure.Persistence.Repositories;
 using Infrastructure.Storage;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Infrastructure.Configurations;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,6 +27,70 @@ builder.Services.AddDatabase();
 
 // Unit of Work + Repositories
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+
+var jwtSettings = new JwtSettings
+{
+    Secret = Environment.GetEnvironmentVariable("JWT_SECRET") ?? string.Empty,
+    Issuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ?? string.Empty,
+    Audience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? string.Empty,
+    ExpirationMinutes = int.TryParse(
+        Environment.GetEnvironmentVariable("JWT_EXPIRATION_MINUTES"),
+        out var expiration)
+        ? expiration
+        : 60
+};
+
+if (string.IsNullOrWhiteSpace(jwtSettings.Secret) ||
+    Encoding.UTF8.GetByteCount(jwtSettings.Secret) < 32)
+{
+    throw new InvalidOperationException(
+        "JWT_SECRET must be configured with at least 32 characters in .env.");
+}
+
+if (string.IsNullOrWhiteSpace(jwtSettings.Issuer))
+{
+    throw new InvalidOperationException(
+        "JWT_ISSUER must be configured in .env.");
+}
+
+if (string.IsNullOrWhiteSpace(jwtSettings.Audience))
+{
+    throw new InvalidOperationException(
+        "JWT_AUDIENCE must be configured in .env.");
+}
+
+// Register JwtSettings so JwtTokenService can receive IOptions<JwtSettings>
+builder.Services.Configure<JwtSettings>(options =>
+{
+    options.Secret = jwtSettings.Secret;
+    options.Issuer = jwtSettings.Issuer;
+    options.Audience = jwtSettings.Audience;
+    options.ExpirationMinutes = jwtSettings.ExpirationMinutes;
+});
+
+builder.Services.AddSingleton<IJwtTokenService, JwtTokenService>();
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(jwtSettings.Secret)),
+
+            ValidateIssuer = true,
+            ValidIssuer = jwtSettings.Issuer,
+
+            ValidateAudience = true,
+            ValidAudience = jwtSettings.Audience,
+
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero
+        };
+    });
 
 builder.Services.AddScoped<ISemesterService, SemesterService>();
 builder.Services.AddScoped<ISemesterRepository, SemesterRepository>();
@@ -37,10 +105,6 @@ builder.Services.AddScoped<ISupabaseStorage>(sp =>
     var inner = sp.GetRequiredService<SupabaseStorage>();
     return new EncryptedSupabaseStorage(inner);
 });
-
-// No JWT
-// No AuthService
-// No AuthSeeder
 
 // Controllers
 builder.Services.AddControllers();
@@ -84,6 +148,28 @@ builder.Services.AddSwaggerGen(c =>
             Title = "Backend.Server1",
             Version = "v1"
         });
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header
+    });
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
 });
 
 var app = builder.Build();
@@ -95,10 +181,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseCors();
-
-// No authentication/authorization
-// app.UseAuthentication();
-// app.UseAuthorization();
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 

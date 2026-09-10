@@ -2,6 +2,8 @@ using Application.Common;
 using Application.DTOs.ExamMaterials;
 using Application.Interfaces;
 using Domain.Enums;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Mvc;
 
 namespace WebApi.Controllers;
@@ -39,6 +41,7 @@ public sealed class ExamMaterialsController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize]
     [RequestSizeLimit(524_288_000)]
     [Consumes("multipart/form-data")]
     public async Task<ActionResult<IReadOnlyList<ExamMaterialMetadataDTO>>> Create(
@@ -46,14 +49,17 @@ public sealed class ExamMaterialsController : ControllerBase
         CancellationToken ct)
     {
         var uploads = BuildUploads(request.Question, request.AnswerRubric, request.AnswerTemplate);
-        var result = await _service.CreateAsync(request.ExaminationId, uploads, ct);
+        if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+        var result = await _service.CreateAsync(request.ExaminationId, uploads, userId, ct);
 
         if (result.IsSuccess) return Ok(result.Data);
         if (result.ErrorCode == "EXAMINATION_NOT_FOUND") return NotFound(result);
+        if (result.ErrorCode == "LECTURER_REQUIRED") return Forbid();
         return BadRequest(result);
     }
 
     [HttpPost("batch")]
+    [Authorize]
     [RequestSizeLimit(524_288_000)]
     [Consumes("multipart/form-data")]
     public async Task<ActionResult<IReadOnlyList<ExamMaterialMetadataDTO>>> CreateMany(
@@ -64,10 +70,12 @@ public sealed class ExamMaterialsController : ControllerBase
            .Select(item => (IReadOnlyList<MaterialFileUpload>)BuildUploads(item.Question, item.AnswerRubric, item.AnswerTemplate))
            .ToList();
 
-       var result = await _service.CreateManyAsync(request.ExaminationId, materials, ct);
+         if (!TryGetCurrentUserId(out var userId)) return Unauthorized();
+         var result = await _service.CreateManyAsync(request.ExaminationId, materials, userId, ct);
 
        if (result.IsSuccess) return Ok(result.Data);
        if (result.ErrorCode == "EXAMINATION_NOT_FOUND") return NotFound(result);
+         if (result.ErrorCode == "LECTURER_REQUIRED") return Forbid();
        return BadRequest(result);
     }
 
@@ -173,4 +181,7 @@ public sealed class ExamMaterialsController : ControllerBase
                 ContentType = file.ContentType,
                 Length = file.Length
             };
+
+    private bool TryGetCurrentUserId(out Guid userId)
+        => Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out userId);
 }
