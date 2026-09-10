@@ -59,6 +59,10 @@ namespace Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("file_question_docs");
 
+                    b.Property<int>("FileType")
+                        .HasColumnType("integer")
+                        .HasColumnName("file_examination_type");
+
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
@@ -97,8 +101,8 @@ namespace Infrastructure.Migrations
 
                     b.Property<string>("ExaminationCode")
                         .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
+                        .HasMaxLength(21)
+                        .HasColumnType("character varying(21)")
                         .HasColumnName("examination_code");
 
                     b.Property<string>("ExaminationType")

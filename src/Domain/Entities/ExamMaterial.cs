@@ -25,6 +25,9 @@ public class ExamMaterial
     [Column("file_answer_template")]
     public string? FileAnswerTemplate { get; set; }
 
+    [Column("file_examination_type")]
+    public ExamMaterialFileType FileType { get; set; }
+
     [Required]
     [Column("created_date")]
     public DateTime CreatedDate { get; set; }

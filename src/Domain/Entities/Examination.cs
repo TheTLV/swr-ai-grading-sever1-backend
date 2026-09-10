@@ -13,7 +13,7 @@ public class Examination
     public Guid ExaminationId { get; set; } = Guid.NewGuid();
 
     [Required]
-    [MaxLength(20)]
+    [MaxLength(21)]
     [Column("examination_code")]
     public string ExaminationCode { get; set; } = string.Empty;
 

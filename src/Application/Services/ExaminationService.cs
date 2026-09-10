@@ -1,119 +1,183 @@
-//using Application.Common;
-//using Application.DTOs.Examinations;
-//using Application.Interfaces;
-//using Domain.Entities;
+using Application.Common;
+using Application.DTOs.Examinations;
+using Application.Interfaces;
+using Domain.Entities;
+using Domain.Enums;
 
-//namespace Application.Services;
+namespace Application.Services;
 
-//public class ExaminationService : IExaminationService
-//{
-//    private readonly IExaminationRepository _exams;
-//    private readonly ISemesterRepository _semesters;
-//    private readonly IUnitOfWork _uow;
+public class ExaminationService : IExaminationService
+{
+    private const string DefaultCourseCode = "SWR302";
+    private readonly IExaminationRepository _repository;
+    private readonly ISemesterRepository _semesterRepository;
+    private readonly IUnitOfWork _unitOfWork;
 
-//    public ExaminationService(IExaminationRepository exams, ISemesterRepository semesters, IUnitOfWork uow)
-//    {
-//        _exams = exams;
-//        _semesters = semesters;
-//        _uow = uow;
-//    }
+    public ExaminationService(
+        IExaminationRepository repository,
+        ISemesterRepository semesterRepository,
+        IUnitOfWork unitOfWork)
+    {
+        _repository = repository;
+        _semesterRepository = semesterRepository;
+        _unitOfWork = unitOfWork;
+    }
 
-//    public async Task<PagedResult<ExaminationDto>> GetPagedAsync(PagedRequest req, CancellationToken ct = default)
-//    {
-//        var all = await _exams.GetAllAsync(ct);
-//        var total = all.Count;
-//        var items = all
-//            .OrderByDescending(e => e.StartDate)
-//            .Skip((req.Page - 1) * req.PageSize)
-//            .Take(req.PageSize)
-//            .Select(ToDto)
-//            .ToList();
+    public async Task<PagedResult<ExaminationDTO>> GetPagedAsync(PagedRequest request, CancellationToken ct = default)
+    {
+        var examinations = await _repository.GetAllAsync(ct);
+        var items = examinations
+            .OrderByDescending(e => e.StartDate)
+            .ThenBy(e => e.StartTime)
+            .Skip((request.Page - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .Select(ToDto)
+            .ToList();
 
-//        return new PagedResult<ExaminationDto> { Items = items, TotalCount = total, Page = req.Page, PageSize = req.PageSize };
-//    }
+        return new PagedResult<ExaminationDTO>
+        {
+            Items = items,
+            TotalCount = examinations.Count,
+            Page = request.Page,
+            PageSize = request.PageSize
+        };
+    }
 
-//    public async Task<Result<ExaminationDto>> GetByIdAsync(Guid id, CancellationToken ct = default)
-//    {
-//        var e = await _exams.GetByIdAsync(id, ct);
-//        if (e == null) return Result<ExaminationDto>.Failure($"Examination '{id}' không tồn tại.", "EXAM_NOT_FOUND");
-//        return Result<ExaminationDto>.Success(ToDto(e));
-//    }
+    public async Task<Result<ExaminationDTO>> GetByIdAsync(Guid id, CancellationToken ct = default)
+    {
+        var examination = await _repository.GetByIdAsync(id, ct);
+        return examination is null
+            ? Result<ExaminationDTO>.Failure("Examination not found.", "EXAMINATION_NOT_FOUND")
+            : Result<ExaminationDTO>.Success(ToDto(examination));
+    }
 
-//    public async Task<Result<ExaminationDto>> CreateAsync(CreateExaminationRequest req, CancellationToken ct = default)
-//    {
-//        if (await _semesters.GetByIdAsync(req.SemesterId, ct) == null)
-//            return Result<ExaminationDto>.Failure("Học kỳ không tồn tại.", "SEMESTER_NOT_FOUND");
+    public async Task<Result<ExaminationDTO>> CreateAsync(CreateExaminationRequest request, CancellationToken ct = default)
+    {
+        var validation = Validate(request.Name, request.ExaminationType, request.DurationMinutes, request.BeforeTimeMinutes);
+        if (validation is not null)
+            return Result<ExaminationDTO>.Failure(validation, "INVALID_EXAMINATION");
 
-//        if (await _exams.IsCodeExistsAsync(req.ExaminationCode, ct))
-//            return Result<ExaminationDto>.Failure("Mã đợt thi đã tồn tại.", "EXAM_CODE_EXISTS");
+        var semester = await _semesterRepository.GetByIdAsync(request.SemesterId, ct);
+        if (semester is null)
+            return Result<ExaminationDTO>.Failure("Semester not found.", "SEMESTER_NOT_FOUND");
 
-//        if (req.DurationMinutes <= 0)
-//            return Result<ExaminationDto>.Failure("Duration phải > 0.", "INVALID_DURATION");
+        var code = await GenerateCodeAsync(semester.SemesterCode, request.ExaminationType, ct);
+        var examination = new Examination
+        {
+            ExaminationCode = code,
+            Name = request.Name.Trim(),
+            ExaminationType = request.ExaminationType,
+            StartDate = request.StartDate,
+            StartTime = request.StartTime,
+            DurationMinutes = request.DurationMinutes,
+            BeforeTimeMinutes = request.BeforeTimeMinutes,
+            Note = request.Note?.Trim(),
+            Status = request.Status,
+            SemesterId = request.SemesterId
+        };
 
-//        var e = new Examination
-//        {
-//            ExaminationId = Guid.NewGuid(),
-//            SemesterId = req.SemesterId,
-//            ExaminationCode = req.ExaminationCode,
-//            Name = req.Name,
-//            StartDate = req.StartDate,
-//            StartTime = req.StartTime,
-//            DurationMinutes = req.DurationMinutes,
-//            BeforeTimeMinutes = req.BeforeTimeMinutes,
-//            Note = req.Note,
-//            Status = req.Status
-//        };
-//        await _exams.AddAsync(e, ct);
-//        await _uow.SaveChangesAsync(ct);
-//        return Result<ExaminationDto>.Success(ToDto(e));
-//    }
+        await _repository.AddAsync(examination, ct);
+        await _unitOfWork.SaveChangesAsync(ct);
+        return Result<ExaminationDTO>.Success(ToDto(examination));
+    }
 
-//    public async Task<Result<ExaminationDto>> UpdateAsync(Guid id, UpdateExaminationRequest req, CancellationToken ct = default)
-//    {
-//        var e = await _exams.GetByIdAsync(id, ct);
-//        if (e == null) return Result<ExaminationDto>.Failure($"Examination '{id}' không tồn tại.", "EXAM_NOT_FOUND");
+    public async Task<Result<ExaminationDTO>> UpdateAsync(Guid id, UpdateExaminationRequest request, CancellationToken ct = default)
+    {
+        var examination = await _repository.GetByIdAsync(id, ct);
+        if (examination is null)
+            return Result<ExaminationDTO>.Failure("Examination not found.", "EXAMINATION_NOT_FOUND");
 
-//        if (req.ExaminationCode != null) e.ExaminationCode = req.ExaminationCode;
-//        if (req.Name != null) e.Name = req.Name;
-//        if (req.StartDate.HasValue) e.StartDate = req.StartDate.Value;
-//        if (req.StartTime.HasValue) e.StartTime = req.StartTime.Value;
-//        if (req.DurationMinutes.HasValue) e.DurationMinutes = req.DurationMinutes.Value;
-//        if (req.BeforeTimeMinutes.HasValue) e.BeforeTimeMinutes = req.BeforeTimeMinutes.Value;
-//        if (req.Note != null) e.Note = req.Note;
-//        if (req.Status.HasValue) e.Status = req.Status.Value;
+        var name = request.Name?.Trim() ?? examination.Name;
+        var type = request.ExaminationType ?? examination.ExaminationType;
+        var duration = request.DurationMinutes ?? examination.DurationMinutes;
+        var beforeTime = request.BeforeTimeMinutes ?? examination.BeforeTimeMinutes;
+        var validation = Validate(name, type, duration, beforeTime);
+        if (validation is not null)
+            return Result<ExaminationDTO>.Failure(validation, "INVALID_EXAMINATION");
 
-//        if (e.DurationMinutes <= 0)
-//            return Result<ExaminationDto>.Failure("Duration phải > 0.", "INVALID_DURATION");
+        var semesterId = request.SemesterId ?? examination.SemesterId;
+        var semester = await _semesterRepository.GetByIdAsync(semesterId, ct);
+        if (semester is null)
+            return Result<ExaminationDTO>.Failure("Semester not found.", "SEMESTER_NOT_FOUND");
 
-//        _exams.Update(e);
-//        await _uow.SaveChangesAsync(ct);
-//        return Result<ExaminationDto>.Success(ToDto(e));
-//    }
+        if (semesterId != examination.SemesterId || type != examination.ExaminationType)
+            examination.ExaminationCode = await GenerateCodeAsync(semester.SemesterCode, type, ct);
 
-//    public async Task<Result> DeleteAsync(Guid id, CancellationToken ct = default)
-//    {
-//        var e = await _exams.GetByIdAsync(id, ct);
-//        if (e == null) return Result.Failure($"Examination '{id}' không tồn tại.", "EXAM_NOT_FOUND");
+        examination.Name = name;
+        examination.ExaminationType = type;
+        examination.StartDate = request.StartDate ?? examination.StartDate;
+        examination.StartTime = request.StartTime ?? examination.StartTime;
+        examination.DurationMinutes = duration;
+        examination.BeforeTimeMinutes = beforeTime;
+        if (request.Note is not null)
+            examination.Note = request.Note.Trim();
+        if (request.Status.HasValue)
+            examination.Status = request.Status.Value;
+        examination.SemesterId = semesterId;
 
-//        if (await _exams.HasMaterialsAsync(id, ct))
-//            return Result.Failure("Không thể xóa đợt thi đang có tài liệu thi.", "EXAM_HAS_MATERIALS");
+        _repository.Update(examination);
+        await _unitOfWork.SaveChangesAsync(ct);
+        return Result<ExaminationDTO>.Success(ToDto(examination));
+    }
 
-//        _exams.Remove(e);
-//        await _uow.SaveChangesAsync(ct);
-//        return Result.Success();
-//    }
+    public async Task<Result> DeleteAsync(Guid id, CancellationToken ct = default)
+    {
+        var examination = await _repository.GetByIdAsync(id, ct);
+        if (examination is null)
+            return Result.Failure("Examination not found.", "EXAMINATION_NOT_FOUND");
 
-//    private static ExaminationDto ToDto(Examination e) => new()
-//    {
-//        ExaminationId = e.ExaminationId,
-//        SemesterId = e.SemesterId,
-//        ExaminationCode = e.ExaminationCode,
-//        Name = e.Name,
-//        StartDate = e.StartDate,
-//        StartTime = e.StartTime,
-//        DurationMinutes = e.DurationMinutes,
-//        BeforeTimeMinutes = e.BeforeTimeMinutes,
-//        Note = e.Note,
-//        Status = e.Status
-//    };
-//}
+        if (await _repository.HasExamMaterialsAsync(id, ct))
+            return Result.Failure("Cannot delete an examination that has materials.", "EXAMINATION_HAS_MATERIALS");
+
+        _repository.Remove(examination);
+        await _unitOfWork.SaveChangesAsync(ct);
+        return Result.Success();
+    }
+
+    private async Task<string> GenerateCodeAsync(string semesterCode, ExaminationType type, CancellationToken ct)
+    {
+        var typeCode = type switch
+        {
+            ExaminationType.RE => "RE",
+            ExaminationType.PE => "PE",
+            ExaminationType.ThreeW => "3W",
+            _ => throw new ArgumentOutOfRangeException(nameof(type), type, "Unknown examination type.")
+        };
+
+        do
+        {
+            var suffix = Random.Shared.Next(0, 1_000_000).ToString("D6");
+            var code = $"{DefaultCourseCode}_{semesterCode}_{typeCode}_{suffix}";
+            if (!await _repository.IsCodeExistsAsync(code, ct))
+                return code;
+        } while (true);
+    }
+
+    private static string? Validate(string name, ExaminationType type, int duration, int beforeTime)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return "Examination name is required.";
+        if (!Enum.IsDefined(type))
+            return "Invalid examination type.";
+        if (duration <= 0)
+            return "Duration must be greater than 0.";
+        if (beforeTime < 0)
+            return "Before-time minutes cannot be negative.";
+        return null;
+    }
+
+    private static ExaminationDTO ToDto(Examination examination) => new()
+    {
+        ExaminationId = examination.ExaminationId,
+        ExaminationCode = examination.ExaminationCode,
+        Name = examination.Name,
+        ExaminationType = examination.ExaminationType,
+        StartDate = examination.StartDate,
+        StartTime = examination.StartTime,
+        DurationMinutes = examination.DurationMinutes,
+        BeforeTimeMinutes = examination.BeforeTimeMinutes,
+        Note = examination.Note,
+        Status = examination.Status,
+        SemesterId = examination.SemesterId
+    };
+}
