@@ -25,10 +25,19 @@ public sealed class SupabaseStorage : ISupabaseStorage
 
     public async Task UploadAsync(string path, Stream content, string contentType, CancellationToken ct = default)
     {
+        // Buffer first: guarantees a known Content-Length regardless of whether
+        // the incoming stream supports seeking, which avoids HttpClient silently
+        // falling back to chunked transfer encoding for the binary payload.
+        await using var buffered = new MemoryStream();
+        await content.CopyToAsync(buffered, ct);
+        buffered.Position = 0;
+
         using var request = new HttpRequestMessage(HttpMethod.Post, BuildObjectUrl(path));
-        request.Content = new StreamContent(content);
-        request.Content.Headers.ContentType = new MediaTypeHeaderValue(
+        var binaryContent = new StreamContent(buffered);
+        binaryContent.Headers.ContentType = new MediaTypeHeaderValue(
             string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType);
+        binaryContent.Headers.ContentLength = buffered.Length;
+        request.Content = binaryContent;
         request.Headers.Add("x-upsert", "false");
         using var response = await _httpClient.SendAsync(request, ct);
         await EnsureSuccessAsync(response, "upload");
