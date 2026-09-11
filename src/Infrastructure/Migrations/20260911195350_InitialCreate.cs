@@ -125,7 +125,8 @@ namespace Infrastructure.Migrations
                     updated_date = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     is_deleted = table.Column<bool>(type: "boolean", nullable: false),
                     status = table.Column<int>(type: "integer", nullable: false),
-                    examination_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    examination_id = table.Column<Guid>(type: "uuid", nullable: true),
+                    semester_id = table.Column<Guid>(type: "uuid", nullable: false),
                     create_by_id = table.Column<Guid>(type: "uuid", nullable: false)
                 },
                 constraints: table =>
@@ -135,13 +136,18 @@ namespace Infrastructure.Migrations
                         name: "FK_exam_materials_examinations_examination_id",
                         column: x => x.examination_id,
                         principalTable: "examinations",
-                        principalColumn: "examination_id",
-                        onDelete: ReferentialAction.Cascade);
+                        principalColumn: "examination_id");
                     table.ForeignKey(
                         name: "FK_exam_materials_lecturers_create_by_id",
                         column: x => x.create_by_id,
                         principalTable: "lecturers",
                         principalColumn: "id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_exam_materials_semesters_semester_id",
+                        column: x => x.semester_id,
+                        principalTable: "semesters",
+                        principalColumn: "semester_id",
                         onDelete: ReferentialAction.Cascade);
                 });
 
@@ -204,6 +210,11 @@ namespace Infrastructure.Migrations
                 name: "IX_exam_materials_examination_id",
                 table: "exam_materials",
                 column: "examination_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_exam_materials_semester_id",
+                table: "exam_materials",
+                column: "semester_id");
 
             migrationBuilder.CreateIndex(
                 name: "IX_examinations_examination_code",

@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260910201218_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20260911203539_UpdateExamMaterialEntity")]
+    partial class UpdateExamMaterialEntity
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -40,13 +40,18 @@ namespace Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_date");
 
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("description");
+
                     b.Property<string>("ExamMaterialCode")
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
                         .HasColumnName("exam_material_code");
 
-                    b.Property<Guid>("ExaminationId")
+                    b.Property<Guid?>("ExaminationId")
                         .HasColumnType("uuid")
                         .HasColumnName("examination_id");
 
@@ -70,9 +75,17 @@ namespace Infrastructure.Migrations
                         .HasColumnType("boolean")
                         .HasColumnName("is_deleted");
 
+                    b.Property<Guid>("SemesterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("semester_id");
+
                     b.Property<int>("Status")
                         .HasColumnType("integer")
                         .HasColumnName("status");
+
+                    b.Property<int>("TotalQuestions")
+                        .HasColumnType("integer")
+                        .HasColumnName("total_questions");
 
                     b.Property<DateTime>("UpdatedDate")
                         .HasColumnType("timestamp with time zone")
@@ -83,6 +96,8 @@ namespace Infrastructure.Migrations
                     b.HasIndex("CreateById");
 
                     b.HasIndex("ExaminationId");
+
+                    b.HasIndex("SemesterId");
 
                     b.ToTable("exam_materials");
                 });
@@ -394,13 +409,19 @@ namespace Infrastructure.Migrations
 
                     b.HasOne("Domain.Entities.Examination", "Examination")
                         .WithMany("ExamMaterials")
-                        .HasForeignKey("ExaminationId")
+                        .HasForeignKey("ExaminationId");
+
+                    b.HasOne("Domain.Entities.Semester", "Semester")
+                        .WithMany("ExamMaterials")
+                        .HasForeignKey("SemesterId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("CreateBy");
 
                     b.Navigation("Examination");
+
+                    b.Navigation("Semester");
                 });
 
             modelBuilder.Entity("Domain.Entities.Examination", b =>
@@ -461,6 +482,8 @@ namespace Infrastructure.Migrations
 
             modelBuilder.Entity("Domain.Entities.Semester", b =>
                 {
+                    b.Navigation("ExamMaterials");
+
                     b.Navigation("Examinations");
                 });
 
